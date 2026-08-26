@@ -74,9 +74,28 @@ done
 
 # ---------- 4. Khong lot du lieu khach ----------
 head_ "4. Khong lot du lieu khach hang / credential"
+# Chi quet NOI DUNG duoc phat di, khong quet ca cay.
+#
+# Da vap 2 lan vi quet ca cay roi dap them --exclude: chinh test-pack.sh chua
+# regex "gettii" nen tu bat minh, roi .github/workflows/ci.yml cung vay. Cu
+# them exclude thi lan sau co file tooling moi lai vap tiep.
+# Liet ke tuong minh cai gi LA noi dung -> file tooling them vao khong lam nhieu.
+SCAN_TARGETS="skills configs inputs templates README.md requirements.txt install.sh"
+
+scan_paths() {
+  for t in $SCAN_TARGETS; do
+    [ -e "$PACK_DIR/$t" ] && printf "%s\n" "$PACK_DIR/$t"
+  done
+}
+
 leak() {  # $1 = mo ta, $2 = regex
-  n=$(grep -rEl "$2" "$PACK_DIR" --exclude-dir=.git --exclude="test-pack.sh" 2>/dev/null | wc -l | tr -d ' ')
-  [ "$n" = "0" ] && ok "khong co $1" || { bad "LOT $1 trong $n file"; grep -rEl "$2" "$PACK_DIR" --exclude-dir=.git --exclude="test-pack.sh" 2>/dev/null | sed "s|$PACK_DIR/|    |"; }
+  hits=$(scan_paths | xargs grep -rEl "$2" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$hits" = "0" ]; then
+    ok "khong co $1"
+  else
+    bad "LOT $1 trong $hits file"
+    scan_paths | xargs grep -rEl "$2" 2>/dev/null | sed "s|$PACK_DIR/|    |"
+  fi
 }
 leak "ten du an cu (gettii)"      "gettii|GETTII"
 leak "URL git noi bo"             "git\.nal\.vn|nal/tt3"

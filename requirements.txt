@@ -1,0 +1,11 @@
+# Thu vien cac skill can de chay.
+# Cai: pip install -r requirements.txt
+#
+# Khong pin ban chinh xac vi day la bo tool noi bo chay tren nhieu may khac
+# nhau; chi chan ban qua cu thieu API dang dung.
+pyyaml>=6.0
+requests>=2.28
+openpyxl>=3.1
+
+# Chi can khi chay test:
+#   pip install -r requirements.txt pytest

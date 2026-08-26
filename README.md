@@ -81,6 +81,18 @@ Thiếu key bắt buộc → skill **dừng và báo**, không tự suy diễn.
 
 ## Test
 
+CI tự chạy trên mọi nhánh và mọi PR (`.github/workflows/ci.yml`): `test-pack.sh` trên
+Python 3.9 + 3.12, cộng một job riêng quét dữ liệu khách hàng / credential.
+
+Chạy tay:
+
+```bash
+pip install -r requirements.txt pytest
+./test-pack.sh                  # 37 kiểm: cài đặt, không ghi đè, test skill, không lọt dữ liệu
+```
+
+Test riêng từng skill:
+
 ```bash
 cd skills/log-bug/tests           && python3 -m pytest . -q   # 139 test
 cd skills/execute-testcase/tests  && python3 -m pytest . -q   # 63 test

@@ -1,0 +1,77 @@
+name: CI
+
+# Chay tren MOI nhanh va moi PR. Ly do chay ca push nhanh phu: `main` la
+# protected nen cong viec luon di qua nhanh -- doi den luc mo PR moi biet vo la
+# muon.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pack-check:
+    name: test-pack (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false        # muon biet loi o CA hai phien ban, khong dung som
+      matrix:
+        # 3.9 la muc toi thieu README cam ket; 3.12 la ban may moi thuong co.
+        # Chay ca hai de khong lo tinh trang "chay tren may toi thi duoc".
+        python: ['3.9', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Cai thu vien
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+
+      - name: Chay test-pack.sh
+        # Kiem 5 nhom: cai vao du an trong, cai lai khong ghi de, test suite cua
+        # tung skill, khong lot du lieu khach hang, SKILL.md hop le.
+        run: ./test-pack.sh
+
+  # Tach rieng khoi pack-check de khi do bi FAIL thi doc log biet ngay la "lot
+  # du lieu khach", khong phai loi test thong thuong.
+  no-customer-data:
+    name: Khong lot du lieu khach hang
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Quet dinh danh khach hang va credential
+        run: |
+          set -uo pipefail
+          fail=0
+          # Quet NOI DUNG duoc phat di, khong quet ca cay. Giong het
+          # SCAN_TARGETS trong test-pack.sh -- hai cho phai cung logic, neu
+          # khong CI va local se bao khac nhau.
+          # Ly do khong dung --exclude: chinh file nay chua regex "gettii" nen
+          # quet ca cay la tu bat minh (da vap 2 lan).
+          TARGETS="skills configs inputs templates README.md requirements.txt install.sh"
+          paths() { for t in $TARGETS; do [ -e "$t" ] && printf "%s\n" "$t"; done; }
+
+          check() {   # $1 = mo ta, $2 = regex
+            if paths | xargs grep -rniE "$2" >/dev/null 2>&1; then
+              echo "::error::LOT $1 -- xem cac dong duoi day"
+              paths | xargs grep -rniE "$2" | head -20
+              fail=1
+            else
+              echo "OK  khong co $1"
+            fi
+          }
+          # Ten du an cu + URL noi bo: pack nay dung chung cho moi du an nen
+          # khong duoc mang dinh danh cua bat ky khach nao.
+          check "ten du an cu"      "gettii|GETTIIS"
+          check "URL git noi bo"    "git\.nal\.vn|nal/tt3"
+          check "email ca nhan"     "huongdt@|ngocttb@"
+          # Credential that: khong bao gio duoc commit, config chi ghi env:TEN_BIEN
+          check "token that"        "glpat-|ghp_[A-Za-z0-9]{20,}|xox[baprs]-|AKIA[0-9A-Z]{16}"
+          check "private key"       "-----BEGIN [A-Z ]*PRIVATE KEY-----"
+          exit $fail
