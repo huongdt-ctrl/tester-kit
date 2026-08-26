@@ -84,6 +84,17 @@ Thiếu key bắt buộc → skill **dừng và báo**, không tự suy diễn.
 CI tự chạy trên mọi nhánh và mọi PR (`.github/workflows/ci.yml`): `test-pack.sh` trên
 Python 3.9 + 3.12, cộng một job riêng quét dữ liệu khách hàng / credential.
 
+Tên job = tên **required status check** khi bật branch protection, khớp theo chuỗi
+chính xác nên đặt ASCII không khoảng trắng:
+
+```
+pack-check-py3.9
+pack-check-py3.12
+no-customer-data
+```
+
+Đổi tên job là đổi tên required check — phải cập nhật lại trong Settings → Branches.
+
 Chạy tay:
 
 ```bash

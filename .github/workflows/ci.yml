@@ -11,7 +11,10 @@ on:
 
 jobs:
   pack-check:
-    name: test-pack (Python ${{ matrix.python }})
+    # Ten job = ten "required status check" khi bat branch protection, va khop
+    # theo CHUOI CHINH XAC. Nen dat ASCII, khong khoang trang, khong dau ngoac:
+    # ten cu 'test-pack (Python 3.9)' rat kho tra trong hop tim cua GitHub.
+    name: pack-check-py${{ matrix.python }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false        # muon biet loi o CA hai phien ban, khong dung som
@@ -40,7 +43,9 @@ jobs:
   # Tach rieng khoi pack-check de khi do bi FAIL thi doc log biet ngay la "lot
   # du lieu khach", khong phai loi test thong thuong.
   no-customer-data:
-    name: Khong lot du lieu khach hang
+    # Giu ASCII khong dau: ten tieng Viet co dau khong go duoc trong hop tim
+    # required status check.
+    name: no-customer-data
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
