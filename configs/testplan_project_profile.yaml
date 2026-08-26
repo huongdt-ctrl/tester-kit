@@ -1,0 +1,158 @@
+profile_version: "1.0"
+
+# Profile dự án cho skill gen-test-plan.
+# Anchor ô của template nằm ở skills/gen-test-plan/references/template-cell-map.md.
+# Quy tắc nội dung ISTQB nằm ở skills/gen-test-plan/references/istqb-alignment.md.
+# File này chỉ override phần khác biệt theo dự án.
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  default_language: "vi"
+  timezone: "Asia/Ho_Chi_Minh"
+
+output:
+  output_root: "testplans"
+  evidence_root: "evidence_testplan"
+  summary_file_name: "testplan_generation_summary.md"
+  traceability_file_name: "testplan_traceability_matrix.md"
+  open_points_file_name: "open_points.md"
+  google_sheet_primary_output: true
+  one_google_sheet_per_project: true    # KHÁC gen-testcase: 1 Sheet / DỰ ÁN, không phải / module
+
+google_sheet_policy:
+  create_method: "duplicate_master_template"
+  preserve_template_formatting: true
+  preserve_formulas: true               # BẮT BUỘC — sheet 07 sống bằng sum()
+  preserve_merged_cells: true
+  allow_extra_worksheets: false
+  allow_rename_worksheets: false
+  allow_add_remove_columns: false
+  wrap_text_on_content_cells: true
+  writable_worksheets:
+    - "Cover"
+    - "01_Introduction"
+    - "02_Scope test"
+    - "03_Test ApproachStrategy"
+    - "03_1_Test ApproachStr"
+    - "04_Resources"
+    - "05_Test Environment"
+    - "06_Criteria"
+    - "07_Estimation & Schedule"
+    - "08_Deliverables"
+    - "09_Risk management"
+  readonly_worksheets:
+    - "Table of content"                # mục lục tĩnh, giữ nguyên 100%
+
+naming_convention:
+  spreadsheet_name_pattern: "TEM-ST02-01_Test Plan_{project_name}_v{version}"
+  date_format: "YYYY-MM-DD"
+  effort_unit: "h"
+  effort_decimals: 1
+
+# 12 worksheet của template_testplan.xlsx (TEM-ST02-01). Đổi tên sheet => cell map lệch.
+worksheets:
+  cover: "Cover"
+  toc: "Table of content"
+  introduction: "01_Introduction"
+  scope: "02_Scope test"
+  approach: "03_Test ApproachStrategy"
+  approach_guideline: "03_1_Test ApproachStr"
+  resources: "04_Resources"
+  environment: "05_Test Environment"
+  criteria: "06_Criteria"
+  estimation: "07_Estimation & Schedule"
+  deliverables: "08_Deliverables"
+  risk: "09_Risk management"
+
+# Formula BẮT BUỘC ghi lại cho mọi dòng data mới ở sheet 07. Cấm hardcode số.
+estimation_formulas:
+  row_total_testing: "S{row}=sum(V{row}:AA{row})"
+  row_total_plan: "AB{row}=sum(G{row},L{row},S{row})"
+  row_total_actual: "AC{row}=Sum(H{row},M{row},T{row})"
+  total_row: 20
+  data_first_row: 5
+  data_last_row: 19
+  leave_blank_on_plan:                  # cột chỉ điền lúc execute, tạo plan để trống
+    - "H"                               # Study requirement - Actual effort
+    - "M"                               # Create testcase - Actual effort
+    - "T"                               # Execute - Actual effort
+    - "I"                               # Status
+    - "N"
+    - "P"
+    - "U"
+
+# Ma trận browser/device cho sheet 07 hàng 4 (V4..AA4). Template mặc định còn IE — override ở đây.
+config_matrix:
+  columns:
+    V: "Chrome"
+    W: "Safari"
+    X: "Edge"
+    Y: "iOS Safari"
+    Z: "Android Chrome"
+    AA: ""                              # trống => không dùng cột này
+  note: "Phải khớp 05_Test Environment 5.1 Hardware. Cột trống => để trống cả cột effort."
+
+# Test level đưa vào matrix 3.2. Chỉ tick khi có bằng chứng (§3 istqb-alignment.md).
+test_levels:
+  unit: false                           # dev-side, ngoài phạm vi QA plan này
+  integration: true
+  system: true
+  acceptance: true
+
+# Test type đưa vào plan. false => để nguyên guidance {...} ở sheet 03_1 (§14 SKILL).
+test_types:
+  requirement_analysis: true            # 3.1.1 — luôn true
+  review_test_cases: true               # 3.1.2 — luôn true
+  functional: true                      # 3.2.1 — luôn true
+  business_cycle: false
+  user_interface: true                  # 3.2.3
+  data_db_integrity: true               # 3.2.4
+  performance: false                    # 3.2.5.1 — cần ngưỡng response time cụ thể
+  load: false                           # 3.2.5.2 — cần số user/tps cụ thể
+  stress: false                         # 3.2.5.3
+  volume: false                         # 3.2.5.4
+  security_access_control: true         # 3.2.6 — có phân quyền + thanh toán
+  failover_recovery: false              # 3.2.7 — cần yêu cầu HA/DR/RTO-RPO
+  configuration: true                   # 3.2.8 — có ma trận browser/device
+  installation: false                   # 3.2.9
+  regression: true                      # 3.2.10
+
+# Test method gán cho từng tính năng ở 3.1. Giá trị hợp lệ theo template.
+test_method_values:
+  - "Full test case"
+  - "Full check list"
+  - "Free test"
+default_test_method: "Full test case"
+
+# Ngưỡng exit criteria (6.1). Mọi tiêu chí phải đo được (§5 istqb-alignment.md).
+exit_criteria_thresholds:
+  test_execution_rate: "= 100%"
+  pass_rate: ">= 95%"
+  bug_critical: "= 0"
+  bug_high: "= 0"
+  bug_medium: "<= 3"
+  requirement_coverage: "= 100%"
+
+# Ngưỡng suspension criteria (6.2). Mỗi tiêu chí phải có điều kiện bắt đầu lại.
+suspension_thresholds:
+  smoke_test_failed: "CIT pass rate < 100%"
+  blocker_ratio: ">= 30% test case bị block"
+  environment_down: ">= 4h"
+
+risk_level_matrix:                       # Mức độ = Khả năng × Ảnh hưởng (§6 istqb-alignment.md)
+  format: "{level} (KN: {likelihood} × AH: {impact})"
+  levels: ["Thấp", "Trung bình", "Cao"]
+  status_values: ["Mở", "Đang giảm thiểu", "Đã đóng", "Chấp nhận", "Không áp dụng"]
+
+deliverable_language: "vi"               # 08_Deliverables cột D (Language)
+
+validation:                              # check bắt buộc trước khi kết thúc Phase 7
+  all_sheets_present: 12
+  no_empty_sheet_except_toc: true
+  every_feature_has_test_method: true
+  every_ticked_test_type_filled: true
+  every_criteria_has_threshold: true
+  every_risk_has_level_status_mitigation: true
+  expected_missing_value_token: "Cần xác nhận"
+  forbidden_missing_value_tokens: ["N/A", "—", "TBD", "-"]

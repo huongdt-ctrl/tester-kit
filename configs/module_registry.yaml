@@ -1,0 +1,78 @@
+registry_version: "2.0"
+
+# ============================================================================
+# SO CAI CUA CA BO SKILL QA.
+# Day la file noi 7 skill lai voi nhau: moi module di qua requirement ->
+# test case -> estimate -> lich test -> execute -> log bug, va trang thai tung
+# chang duoc ghi ngay tai day.
+#
+# DIEN FILE NAY TRUOC KHI CHAY /gen-requirement hay /gen-testcase.
+# ============================================================================
+#
+# QUY UOC HAT MODULE (v2.0): 1 MAN HINH = 1 MODULE.
+#   - Man hinh lay dung theo muc liet ke man hinh cua tai lieu thiet ke.
+#     (Du an Nhat: sheet `03_画面レイアウト` > `画面レイアウト一覧` cua 外部設計書)
+#   - Thanh phan non-UI (batch, SQL, API) tach theo entry point, moi entry
+#     point 1 module.
+#   - KHONG gop nhieu man hinh vao 1 module du chung phu thuoc cheo -- quan he
+#     cheo ghi o `related_modules` va o `impact_scope.md` cua tung bo tai lieu.
+#
+# QUAN TRONG:
+# - Skill LUON hien thi danh sach nay va DUNG hoi nguoi dung chon, tru khi
+#   nguoi dung go ro ten module tren dong lenh
+#   (vd `/gen-requirement blacklist_settings`).
+# - Co file nay thi skill KHONG quet lai source de dung danh sach module.
+# - Them chuc nang moi -> them 1 entry vao `modules`, KHONG sua skill.
+
+project:
+  project_code: "PRJ"                    # ma ngan, dung dat ten file/thu muc
+  project_name: "Sample Project"
+  scope: "Mo ta pham vi dot lam nay"
+  derived_from:                          # nguon rut ra danh sach module nay
+    - "SRC-001 <muc/sheet> (<ten tai lieu>)"
+  last_updated: "YYYY-MM-DD"
+
+status_values:
+  - "pending"      # chua gen requirement
+  - "req_done"     # da co bo requirement trong knowledge/<module_name>/
+  - "tc_done"      # da co test case
+  - "out_of_scope" # khong lam
+
+modules:
+  # --- Xoa 2 entry mau duoi day va dien module that cua du an ban ---
+  - no: 1
+    module_name: "sample_module_one"     # snake_case, dung lam ten thu muc
+    system: "SampleSystem"               # he thong con, neu du an co nhieu
+    source_screen: "<ten man hinh trong tai lieu goc>"
+    screen: "<duong dan man hinh, vd: Quan ly su kien > Lich ban>"
+    screen_alias_en: "Event management > Schedule"
+    fr_refs: "SRC-001 §2.2(1) No.1"      # tro nguoc ve yeu cau chuc nang
+    fr_count: 1
+    status: "pending"
+    # --- cac o duoi do SKILL tu dien sau khi chay, de trong luc khoi tao ---
+    requirement_output: ""               # /gen-requirement  -> knowledge/<module>/
+    testcase_output: ""                  # /gen-testcase     -> URL Google Sheet
+    testcase_sheet_id: ""
+    testcase_state: ""
+    estimate_output: ""                  # /estimate-test    -> estimates/<module>/
+    estimate_note: ""
+    related_modules: []
+    notes: "Ghi chu nghiep vu dang luu y khi lam module nay."
+
+  - no: 2
+    module_name: "sample_module_two"
+    system: "SampleSystem"
+    source_screen: "<ten man hinh trong tai lieu goc>"
+    screen: "<duong dan man hinh>"
+    screen_alias_en: ""
+    fr_refs: "SRC-001 §2.2(1) No.2"
+    fr_count: 3
+    status: "pending"
+    requirement_output: ""
+    testcase_output: ""
+    testcase_sheet_id: ""
+    testcase_state: ""
+    estimate_output: ""
+    estimate_note: ""
+    related_modules: ["sample_module_one"]
+    notes: ""

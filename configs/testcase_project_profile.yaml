@@ -1,0 +1,239 @@
+profile_version: "1.0"
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  default_language: "vi"
+  timezone: "Asia/Ho_Chi_Minh"
+
+output:
+  output_root: "testcases"
+  evidence_root: "evidence_testcase"
+  summary_file_name: "testcase_generation_summary.md"
+  traceability_file_name: "testcase_traceability_matrix.md"
+  open_points_file_name: "open_points.md"
+  google_sheet_primary_output: true
+  one_google_sheet_per_module: true
+  one_worksheet_only: true
+  default_worksheet_name: "Function {Name}"   # tên sheet thật trong template_testcase.xlsx
+
+google_sheet_policy:
+  create_method: "duplicate_master_template"
+  preserve_template_formatting: true
+  preserve_dropdowns: true
+  preserve_data_validation: true
+  preserve_filter: true
+  preserve_frozen_row: true
+  preserve_conditional_formatting: true
+  allow_extra_worksheets: false
+  clear_existing_data_before_write: true
+
+naming_convention:
+  spreadsheet_name_pattern: "{project_code}_{module_name}_manual_testcases"
+  module_name_style: "snake_case"
+
+tc_id_rule:
+  format: "TC_%03d"          # dòng mẫu trong template ghi TC_001 (có dấu gạch dưới)
+  start_index: 1
+  unique_across_module: true
+
+priority_rule:
+  allowed_values:
+    - "High"
+    - "Medium"
+    - "Low"
+  default_priority: "Medium"
+  high_priority_when:
+    - "main_flow"
+    - "critical_validation"
+    - "permission_control"
+    - "security_risk"
+    - "data_integrity"
+    - "state_transition_critical"
+    - "downstream_impact_high"
+
+classification_order:
+  classification_1:
+    - "Common Test Cases"
+    - "Functional Test Cases"
+    - "Non-Functional Test Cases"
+  classification_2:
+    Common Test Cases:
+      - "Trigger/Navigation"
+      - "UI"
+      - "Form Validation"
+    Functional Test Cases:
+      - "Positive"
+      - "Negative"
+    Non-Functional Test Cases:
+      - "Performance"
+      - "Security"
+      - "Usability"
+      - "Compatibility"
+      - "Reliability"
+
+# Header THẬT của sheet "Function {Name}" trong template_testcase.xlsx (đọc trực tiếp 2026-08-14).
+# Cột A/B/C dùng chung header "Classification", phân cấp bằng nhãn I / II / III ở hàng 11.
+template_header_aliases:
+  classification_1:
+    - "Classification"        # cột A, nhãn cấp I ở hàng 11
+    - "Classification 1"
+  classification_2:
+    - "Classification"        # cột B, nhãn cấp II
+    - "Classification 2"
+  classification_3:
+    - "Classification"        # cột C, nhãn cấp III
+    - "Classification 3"
+  title:
+    - "Test subject"          # cột D — header THẬT
+    - "Title"
+    - "Test Case Title"
+  priority:
+    - "Priority"              # cột E
+  tc_id:
+    - "Test case ID"          # cột F — header THẬT
+    - "TC ID"
+    - "Test Case ID"
+  preconditions:
+    - "Pre-condition"         # cột G
+    - "Preconditions"
+  steps:
+    - "Steps to reproduce"    # cột H — header THẬT
+    - "Steps"
+    - "Test Steps"
+  test_data:
+    - "Test data"             # cột I
+    - "Test Data"
+  expected_result:
+    - "Expected result"       # cột J
+    - "Expected Result"
+    - "Expected Results"
+
+# Cột kết quả thực thi — tester điền khi chạy test, skill KHÔNG được ghi vào.
+execution_columns:
+  round_1:
+    test_result: "Test result"   # cột K, dropdown Passed/Failed/Pending/Blocked/NA/Untested
+    tester: "Tester"             # cột L
+    test_date: "Test date"       # cột M
+    bug_id: "Bug_ID"             # cột N
+    remark: "Remark"             # cột O
+  round_2:
+    test_result: "Test result"   # cột P
+    tester: "Tester"             # cột Q
+    test_date: "Test date"       # cột R
+    bug_id: "Bug_ID"             # cột S
+    remark: "Remark"             # cột T
+  write_policy: "skill_must_not_write"
+
+design_techniques:
+  preferred:
+    - "BVA"
+    - "EP"
+    - "Decision Table"
+    - "State Transition"
+    - "Exploratory"
+  rules:
+    - condition: "numeric_or_length_validation"
+      use:
+        - "BVA"
+        - "EP"
+    - condition: "multiple_condition_business_rules"
+      use:
+        - "Decision Table"
+    - condition: "status_change_or_lifecycle"
+      use:
+        - "State Transition"
+    - condition: "unclear_or_high_risk_area"
+      use:
+        - "Exploratory"
+
+coverage_policy:
+  must_cover:
+    - "navigation_access"
+    - "authorization"
+    - "ui_basics_if_ui_exists"
+    - "field_validation"
+    - "positive_flow"
+    - "negative_flow"
+    - "boundary_cases"
+    - "invalid_input_cases"
+    - "security_basics"
+    - "session_timeout_if_applicable"
+  nice_to_have:
+    - "compatibility"
+    - "bulk_data_behavior"
+    - "recovery_behavior"
+
+writing_rules:
+  language: "vi"
+  use_parameterized_test_data: true
+  keep_each_testcase_independent: true
+  if_requirement_unclear_phrase: "Cần xác nhận"
+  expected_result_must_be_deterministic: true
+  forbid_phrases:
+    - "tương tự test case trên"
+    - "như case trước"
+    - "same as above"
+
+traceability:
+  enabled: true
+  map_to:
+    - "FR"
+    - "BR"
+    - "VR"
+    - "Source ID"
+    - "Source Reference"
+
+open_points:
+  enabled: true
+  create_when:
+    - "source_conflict"
+    - "missing_validation_rule"
+    - "missing_business_rule"
+    - "unclear_expected_behavior"
+    - "unclear_access_control"
+    - "missing_google_master_template_file_id"
+
+non_functional_policy:
+  security_checks:
+    - "unauthorized_access"
+    - "session_timeout"
+    - "direct_url_access_if_ui"
+    - "role_based_access"
+  performance_checks:
+    - "response_time_basic"
+    - "large_input_or_bulk_condition_if_applicable"
+  reliability_checks:
+    - "stable_behavior_after_error"
+    - "retry_or_reopen_behavior_if_applicable"
+
+source_priority:
+  ordered_types:
+    - "functional_requirements"
+    - "business_rules"
+    - "validation_rules"
+    - "approved_requirement_doc"
+    - "approved_ticket"
+    - "confirmed_figma"
+    - "api_spec"
+    - "workflow"
+    - "screen_capture"
+    - "meeting_note"
+
+review_policy:
+  mandatory_checks:
+    - "google_sheet_created_or_marked_need_confirmation"
+    - "classification_order_correct"
+    - "tc_id_unique"
+    - "priority_valid"
+    - "no_duplicate_title"
+    - "no_dependency_between_testcases"
+    - "expected_result_clear"
+    - "testcases_written_to_target_worksheet"
+    - "template_header_mapping_resolved"
+
+notes:
+  - "Header thực tế phải lấy từ template_testcase.xlsx hoặc Google master template."
+  - "Không tự tạo schema cột riêng nếu template công ty đã là source of truth."
+  - "Header/vị trí hàng trong file này được đọc trực tiếp từ templates/template_testcase.xlsx ngày 2026-08-14, không phải giả định."
+  - "Template có dropdown Priority (E) và Test result (K, P) chỉ khai báo tới hàng 20 — bộ test case dài hơn phải mở rộng vùng data validation, nếu không các dòng cuối mất dropdown."

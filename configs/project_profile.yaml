@@ -1,0 +1,48 @@
+profile_version: "1.0"
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  default_language: "vi"
+  timezone: "Asia/Ho_Chi_Minh"
+
+issue_tracker_policy:
+  source_type_name: "issue"
+  supported_systems:
+    - "jira"
+    - "redmine"
+    - "gitlab"
+    - "other"
+  default_system: "gitlab"
+  required_fields_when_source_type_is_issue:
+    - "issue_system"
+    - "location"
+  preferred_fields:
+    - "issue_key"
+    - "issue_id"
+  url_patterns:
+    jira: "{base_url}/browse/{issue_key}"
+    redmine: "{base_url}/issues/{issue_id}"
+    gitlab: "{base_url}/-/issues/{issue_id}"
+  rules:
+    - "Không gắn cứng source issue với Redmine."
+    - "Nếu issue_system là jira thì ưu tiên issue_key."
+    - "Nếu issue_system là redmine thì ưu tiên issue_id hoặc location."
+    - "Nếu issue_system là gitlab thì ưu tiên issue_id (số thứ tự issue trong project)."
+    - "Nếu thiếu thông tin định danh issue thì vẫn dùng location nếu hợp lệ."
+
+source_priority:
+  ordered_types:
+    - "functional_requirements"
+    - "business_rules"
+    - "validation_rules"
+    - "approved_requirement_doc"
+    - "approved_issue"
+    - "confirmed_figma"
+    - "api_spec"
+    - "workflow"
+    - "screen_capture"
+    - "meeting_note"
+
+notes:
+  - "Bộ skill dùng khái niệm issue chung cho Jira, Redmine và hệ thống tương đương."

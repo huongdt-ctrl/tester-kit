@@ -1,0 +1,97 @@
+profile_version: "1.0"
+
+# Chuan chung cua project cho viec log bug -- muc uu tien THAP NHAT.
+# inputs/log_bug_manifest.yaml va CLI param se ghi de cac key trung ten.
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  default_language: "vi"
+  timezone: "Asia/Ho_Chi_Minh"
+
+# --- THAM CHIEU cho nguoi/agent doc. Code KHONG doc block nay ---
+# (adapter tu khai field bat buoc cua no; factory tu biet 3 system)
+tracker_support:
+  # Ba tracker da implement that (co adapter + goi API that).
+  supported_systems:
+    - "redmine"
+    - "gitlab"
+    - "jira"
+  # Doi thanh tracker du an ban dang dung.
+  default_system: "gitlab"
+  url_patterns:
+    redmine: "{base_url}/issues/{issue_id}"
+    gitlab: "{base_url}/-/issues/{issue_id}"
+    jira: "{base_url}/browse/{issue_key}"
+
+bug_policy:
+  # Title theo cu phap: [ID/Ma ticket cha][Ten man hinh/tinh nang] Noi dung bug
+  bug_title_pattern: "[{parent_ticket}][{screen}] {summary}"
+
+  # Field bat buoc phai co truoc khi tao bug.
+  require_severity: true
+  require_priority: true
+  require_scope: false
+  require_parent_ticket: true
+
+  allowed_bug_types:
+    - "ui"       # chinh ta, phong chu, co chu, vi tri hien thi item
+    - "logic"
+  allowed_ui_subtypes:
+    - "spelling"     # chinh ta
+    - "font"         # phong chu
+    - "font_size"    # co chu
+    - "position"     # vi tri hien thi cac item / xo lech
+    - "other"
+  allowed_severities: ["Critical", "Major", "Medium", "Low"]
+  allowed_priorities: ["High", "Medium", "Low"]
+  allowed_statuses: ["Open", "InProgress", "Resolved", "Deployed", "Closed", "Rejected", "Pending"]
+  allowed_scopes: ["Frontend", "Backend"]
+
+  # Ngoai le duy nhat cua rule "moi loi 1 bug". Chi ap dung cho bug UI.
+  ui_merge:
+    enabled: true
+    # Case A: cung test object, cung loai bug UI, tu 2 item tro len -> gop.
+    # Case B: cung 1 item co 3..5 loi nho -> gop.
+    min_errors_same_item: 3
+    max_errors_same_item: 5
+    # Qua max -> KHONG tu gop, tra needs_confirm de hoi user.
+
+  # skip     -> nghi trung thi KHONG tao, bao skipped
+  # warn_only -> van tao nhung ghi ro canh bao trung vao warnings
+  duplicate_handling: "skip"
+  # Tat rieng tung tang dedup (vd chay offline thi tat tang search).
+  # Tat ca hai = khong chong trung nua -> chi dung khi biet ro minh dang lam gi.
+  check_registry_before_create: true
+  check_tracker_search_before_create: true
+
+  # Priority canonical -> gia tri tracker hieu. Redmine/Jira nhan ten khac nhau.
+  priority_map:
+    High: "High"
+    Medium: "Normal"
+    Low: "Low"
+
+  default_labels: []
+
+paths:
+  bug_reports_root: "bug_reports"    # code doc: noi ghi bug_registry.json
+  bug_evidence_root: "bug_evidence"  # THAM CHIEU: quy uoc cho agent dat evidence
+
+# --- THAM CHIEU: checklist cho agent tu soi. Code KHONG doc block nay ---
+review_policy:
+  mandatory_checks:
+    - "every_bug_has_bug_type_ui_or_logic"
+    - "every_bug_has_steps_actual_expected"
+    - "no_duplicate_bug_created_for_existing_open_bug"
+    - "ui_merge_only_within_allowed_two_cases"
+    - "logic_bug_never_merged"
+    - "credentials_resolved_from_env_not_plaintext"
+
+notes:
+  - "Tat ca bug deu phai duoc ghi nhan va log len he thong (rule 1)."
+  - "Tat ca bug deu phai phan loai UI hoac logic (rule 2)."
+  - "Bug doc lap voi nhau, moi loi log 1 bug (rule 3) -- tru hai case gop UI."
+  - "Khong log bug trung (rule 4)."
+  - "Bug logic KHONG BAO GIO duoc gop."
+  - "Severity/Scope/Device/OS/Browser nhung vao description, khong map custom field."
+  - "api_key / token / api_token doc tu environment variable, khong ghi plaintext."

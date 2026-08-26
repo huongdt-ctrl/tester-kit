@@ -1,0 +1,222 @@
+profile_version: "1.0"
+
+# Day la chuan chung cua project — muc uu tien THAP NHAT.
+# inputs/test_execution_manifest.yaml va CLI param se ghi de cac key trung ten.
+# Xem muc 2A trong SKILL.md.
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  default_language: "vi"
+  timezone: "Asia/Ho_Chi_Minh"
+
+execution_scope:
+  supported_app_types:
+    - "web"
+  supported_testcase_source_types:
+    - "google_sheet"
+    - "excel"
+  preferred_testcase_source_type: "google_sheet"
+
+column_header_aliases:
+  tc_id:
+    - "TC ID"
+    - "Test Case ID"
+  title:
+    - "Title"
+    - "Test Case Title"
+  preconditions:
+    - "Preconditions"
+    - "Pre-condition"
+  steps:
+    - "Steps"
+    - "Test Steps"
+  test_data:
+    - "Test data"
+    - "Test Data"
+  expected_result:
+    - "Expected Result"
+    - "Expected Results"
+  test_result:
+    - "Test result"
+    - "Result"
+    - "Execution Result"
+  test_date:
+    - "Test date"
+    - "Executed Date"
+    - "Execution Date"
+  tested_by:
+    - "Tested by"
+    - "Executed by"
+  remark:
+    - "Remark"
+    - "Execution Remark"
+    - "Notes"
+  bug_id:
+    - "Bug ID"
+    - "Defect ID"
+    - "Issue ID"
+  bug_url:
+    - "Bug URL"
+    - "Defect URL"
+    - "Issue URL"
+  actual_result:
+    - "Actual Result"
+    - "Actual result"
+
+result_policy:
+  allowed_statuses:
+    - "Pass"
+    - "Fail"
+    - "N/A"
+    - "Untested"
+    - "Pending"
+  default_status_before_run: "Untested"
+  status_when_not_testable: "Pending"
+  status_when_not_applicable: "N/A"
+  mandatory_remark_when_not_testable: true
+  mandatory_remark_when_fail: true
+  not_testable_remark_prefix: "Chưa test được:"
+  fail_remark_prefix: "Actual khác Expected:"
+  tested_by_source: "manifest"
+  test_date_format: "YYYY-MM-DD"
+
+not_testable_reason_categories:
+  - "Environment issue"
+  - "Access / permission issue"
+  - "Test data unavailable"
+  - "Deployment not ready"
+  - "Dependency unavailable"
+  - "Ambiguous test case"
+  - "Manual-only step not executable"
+
+status_decision_rules:
+  - condition: "actual_matches_expected"
+    set_status: "Pass"
+  - condition: "actual_differs_from_expected_and_not_environment_issue"
+    set_status: "Fail"
+  - condition: "case_not_applicable_for_environment"
+    set_status: "N/A"
+  - condition: "cannot_execute_due_to_blocker"
+    set_status: "Pending"
+  - condition: "not_started"
+    set_status: "Untested"
+
+redmine_policy:
+  enabled: true
+  create_bug_when_status_is:
+    - "Fail"
+  never_create_bug_when_status_is:
+    - "Pending"
+    - "Untested"
+    - "N/A"
+  required_fields:
+    - "base_url"
+    - "api_key"   # gia tri dang env:TEN_BIEN
+    - "project_id"
+  bug_title_pattern: "[TEST][{module_name}][{tc_id}] {short_summary}"
+  bug_description_sections:
+    - "Module"
+    - "TC ID"
+    - "Test Case Title"
+    - "Environment"
+    - "Preconditions"
+    - "Steps Executed"
+    - "Test Data"
+    - "Expected Result"
+    - "Actual Result"
+    - "Tested By"
+    - "Test Date"
+    - "Evidence"
+  duplicate_bug_handling: "warn_only"
+  check_existing_bug_id_before_create: true
+  reopen_or_regression_note_when_old_bug_closed: true
+
+environment_safety:
+  allowed_environment_names:
+    - "UAT"
+    - "STG"
+    - "DEV"
+    - "LOCAL"
+  forbid_production: true
+  require_confirm_when_url_not_matching:
+    - "uat"
+    - "stg"
+    - "staging"
+    - "dev"
+    - "test"
+    - "localhost"
+
+execution_rules:
+  login_must_succeed_before_case_execution: true
+  verify_page_loaded_before_action: true
+  capture_screenshot_on_fail: true
+  capture_screenshot_on_pending: true
+  capture_screenshot_on_pass: false
+  preserve_existing_test_definition: true
+  update_only_execution_columns: true
+
+update_policy:
+  # in_place           -> ghi thang vao chinh file test case
+  # backup_then_update -> backup file goc roi van ghi vao file goc
+  # clone_then_write   -> clone file test case ra ban moi, ghi vao ban clone, giu goc nguyen
+  allowed_modes:
+    - "in_place"
+    - "backup_then_update"
+    - "clone_then_write"
+  default_mode: "in_place"
+  allow_backup_before_update: true
+  backup_file_name_pattern: "{module_name}_before_execution_{timestamp}"
+  update_target_same_as_source: true
+  update_only_execution_columns: true
+  execution_columns_allowed:
+    - "Test result"
+    - "Test date"
+    - "Tested by"
+    - "Remark"
+    - "Actual Result"
+    - "Bug ID"
+    - "Bug URL"
+  protect_definition_columns: true
+  definition_columns_protected:
+    - "Classification 1"
+    - "Classification 2"
+    - "Classification 3"
+    - "TC ID"
+    - "Title"
+    - "Priority"
+    - "Preconditions"
+    - "Steps"
+    - "Test data"
+    - "Expected Result"
+
+output:
+  execution_reports_root: "execution_reports"
+  execution_evidence_root: "execution_evidence"
+  execution_runtime_root: "execution_runtime"
+  summary_file_name: "execution_summary.md"
+  failed_cases_file_name: "failed_cases.md"
+  redmine_bug_mapping_file_name: "redmine_bug_mapping.md"
+  environment_issues_file_name: "environment_issues.md"
+
+review_policy:
+  mandatory_checks:
+    - "login_result_recorded"
+    - "all_executed_cases_have_status"
+    - "all_not_testable_cases_have_remark"
+    - "fail_cases_have_actual_result_and_remark"
+    - "redmine_bug_logged_only_for_valid_fail"
+    - "execution_columns_updated_only"
+    - "no_duplicate_bug_created_for_existing_open_bug"
+    - "credentials_resolved_from_env_not_plaintext"
+    - "effective_config_table_written_to_summary"
+
+notes:
+  - "File test case hiện có là input và cũng là output chính của execution."
+  - "Không tạo file test case execution mới nếu không có yêu cầu riêng."
+  - "Chỉ được cập nhật các cột execution."
+  - "Nếu test case không test được thì Remark là bắt buộc."
+  - "Dùng status Pending cho case không thể test do blocker."
+  - "Không log bug Redmine cho lỗi môi trường, quyền truy cập hoặc thiếu dữ liệu."
+  - "Case Fail bat buoc co CA Actual Result VA Remark."
+  - "Khong chay tren production; xem environment_safety."

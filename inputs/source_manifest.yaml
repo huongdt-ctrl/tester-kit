@@ -1,0 +1,82 @@
+manifest_version: "1.0"
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  domain: "CAN_DIEN"   # vd: ticketing, ecommerce, fintech, logistics
+  project_root: "."
+  output_root: "knowledge"
+  evidence_root: "evidence"
+  output_language: "vi"
+  timezone: "Asia/Ho_Chi_Minh"
+
+run:
+  module_name: ""          # KHÔNG dùng để chọn module — skill LUÔN hiển thị danh sách và hỏi (xem configs/module_registry.yaml)
+  last_run_module: ""      # chỉ ghi vết lần chạy gần nhất
+  analysis_mode: "baseline" # baseline | change_request | reverse_engineering
+  generate_traceability: true
+  generate_open_points: true
+  generate_impact_scope: true
+
+issue_tracker:
+  system: "gitlab" # jira | redmine | gitlab | other
+  base_url: "https://gitlab.example.com/your-group/your-project"
+  project_path: "your-group/your-project"
+  issues_list_url: "https://gitlab.example.com/your-group/your-project/-/issues"
+  browse_pattern: "{base_url}/-/issues/{issue_id}"
+
+source_selection:
+  include_status:
+    - "approved"
+    - "confirmed"
+    - "reference"
+    - "draft"
+  exclude_status:
+    - "obsolete"
+    - "rejected"
+  prioritize_requirement_doc: true
+  allow_inaccessible_sources: true
+
+# Danh sách nguồn đầu vào. 3 entry dưới đây là MẪU cho 3 kiểu source hay gặp:
+# tài liệu thiết kế (file trên Drive), issue tracker, và bản tài liệu cũ đã bị thay thế.
+# Copy thêm entry theo mẫu, đánh số SRC-003, SRC-004... khi dự án có nhiều nguồn hơn.
+sources:
+  - id: "SRC-001"
+    type: "requirement_doc"
+    title: "<Ten tai lieu thiet ke>"
+    location: "https://drive.google.com/file/d/CAN_DIEN_FILE_ID/view"
+    drive_file_id: "CAN_DIEN_FILE_ID"
+    version: "<version>"
+    status: "approved"
+    priority: "high"
+    relevance: "high"
+    auth_required: true
+    notes: "Tài liệu thiết kế / requirement chính. Source of truth cho FR/BR/VR và chi tiết màn hình."
+
+  - id: "SRC-002"
+    type: "issue"
+    issue_system: "gitlab"
+    title: "<Danh sach issue cua du an>"
+    location: "https://gitlab.example.com/your-group/your-project/-/issues"
+    status: "reference"
+    priority: "medium"
+    relevance: "medium"
+    auth_required: true
+    notes: "Danh sách issue của project, chưa chỉ định issue cụ thể. Khi chốt issue thì thêm issue_id + location trực tiếp."
+
+  - id: "SRC-001-OLD"
+    type: "requirement_doc"
+    title: "<Ten tai lieu thiet ke> (bản cũ)"
+    location: "https://drive.google.com/file/d/CAN_DIEN_FILE_ID/view"
+    drive_file_id: "CAN_DIEN_FILE_ID"
+    version: "<version cu>"
+    status: "obsolete"
+    priority: "low"
+    relevance: "low"
+    notes: "Bị thay thế bởi SRC-001. Giữ để truy vết, skill tự loại theo exclude_status."
+
+notes:
+  - "Source kiểu issue hỗ trợ Jira, Redmine, GitLab hoặc hệ thống tương đương."
+  - "Toàn bộ nguồn Drive yêu cầu auth — nếu không đọc được thì ghi 'Cần xác nhận', không suy đoán."
+  - "Quy tắc chọn bản tài liệu (ví dụ cho dự án Nhật, 外部設計書 = tài liệu thiết kế ngoài): tên file dạng <hệ thống>_<tên chức năng>_外部設計書_<version>_<yyyymmdd><rev> → lấy version lớn nhất, tie thì lấy yyyymmdd lớn nhất. Ưu tiên file tiếng Nhật có 外部設計書 trong tên."
+  - "Nếu trong folder có file tên gần giống nhưng chưa rõ vai trò thì KHÔNG khai làm source — ghi vào open_points để hỏi lại."

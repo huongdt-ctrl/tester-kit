@@ -1,0 +1,140 @@
+manifest_version: "1.0"
+
+# Thu tu uu tien cau hinh: profile < manifest < CLI param.
+# Key trung ten voi configs/test_execution_project_profile.yaml se GHI DE profile.
+# Xem muc 2A trong SKILL.md.
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  domain: "CAN_DIEN"   # vd: ticketing, ecommerce, fintech, logistics
+  project_root: "."
+  output_language: "vi"
+  timezone: "Asia/Ho_Chi_Minh"
+
+run:
+  module_name: "event_editing"
+  execution_mode: "baseline" # baseline | rerun_failed | selected_cases
+  execute_only_statuses:
+    - "Untested"
+    - "Pending"
+  # overwrite_existing_result da khai o update_policy — khong khai lap o day
+  stop_on_login_failure: true
+  stop_on_critical_environment_issue: false
+  capture_screenshot_on_pass: false
+  capture_screenshot_on_fail: true
+  capture_screenshot_on_pending: true
+
+environment:
+  name: "UAT"
+  base_url: "https://uat.example.com"
+  login_url: "https://uat.example.com/login"
+  username: "test_user"
+  # KHONG ghi plaintext. Format env:TEN_BIEN — skill doc tu environment variable.
+  password: "env:TEST_PASSWORD"
+  browser: "chrome"
+  headless: false
+  default_timeout_seconds: 30
+
+testcase_source:
+  source_type: "google_sheet" # google_sheet | excel
+  google_sheet_file_id: "CAN_DIEN_FILE_ID"   # file Google Sheet test case da co, se duoc cap nhat ket qua
+  worksheet_name: "Manual Test Cases"
+  header_row_index: 1
+  data_start_row_index: 2
+  local_excel_path: ""
+  update_target_same_as_source: true
+
+column_mapping:
+  tc_id: "TC ID"
+  title: "Title"
+  preconditions: "Preconditions"
+  steps: "Steps"
+  test_data: "Test data"
+  expected_result: "Expected Result"
+  test_result: "Test result"
+  test_date: "Test date"
+  tested_by: "Tested by"
+  remark: "Remark"
+  bug_id: "Bug ID"
+  bug_url: "Bug URL"
+  actual_result: "Actual Result"
+
+update_policy:
+  mode: "in_place" # in_place | backup_then_update | clone_then_write
+  overwrite_existing_result: true
+  overwrite_only_execution_columns: true
+  execution_columns:
+    - "Test result"
+    - "Test date"
+    - "Tested by"
+    - "Remark"
+    - "Actual Result"
+    - "Bug ID"
+    - "Bug URL"
+  protect_definition_columns: true
+  definition_columns:
+    - "Classification 1"
+    - "Classification 2"
+    - "Classification 3"
+    - "TC ID"
+    - "Title"
+    - "Priority"
+    - "Preconditions"
+    - "Steps"
+    - "Test data"
+    - "Expected Result"
+
+result_policy:
+  allowed_statuses:
+    - "Pass"
+    - "Fail"
+    - "N/A"
+    - "Untested"
+    - "Pending"
+  status_when_not_testable: "Pending"
+  mandatory_remark_when_not_testable: true
+  remark_prefix_when_not_testable: "Chưa test được:"
+  test_date_format: "YYYY-MM-DD"
+  write_tested_by: true
+  clear_old_remark_before_write: false
+
+case_filter:
+  include_tc_ids: []
+  exclude_tc_ids: []
+  include_classification_1:
+    - "Common Test Cases"
+    - "Functional Test Cases"
+  exclude_classification_1: []
+  include_priorities:
+    - "High"
+    - "Medium"
+    - "Low"
+  exclude_priorities: []
+
+redmine:
+  enabled: true
+  base_url: "https://redmine.example.com"
+  api_key: "env:REDMINE_API_KEY"   # KHONG ghi plaintext
+  project_id: "sample-project"
+  tracker_id: 1
+  status_id: 1
+  priority_id: 2
+  assigned_to_id:
+  category_id:
+  bug_title_pattern: "[TEST][{module_name}][{tc_id}] {short_summary}"
+  create_bug_only_when_result_is_fail: true
+  create_bug_for_environment_issue: false
+  include_evidence_in_description: true
+
+paths:
+  execution_reports_root: "execution_reports"
+  execution_evidence_root: "execution_evidence"
+  execution_runtime_root: "execution_runtime"
+
+notes:
+  - "File test case cũ là input và cũng là output chính của execution."
+  - "Nếu test case không test được thì phải ghi Remark theo format Chưa test được: <lý do>."
+  - "Không log bug Redmine cho lỗi môi trường hoặc thiếu dữ liệu."
+  - "password va redmine.api_key doc tu environment variable, khong ghi plaintext vao file nay."
+  - "execution_mode selected_cases bat buoc phai co include_tc_ids khong rong."

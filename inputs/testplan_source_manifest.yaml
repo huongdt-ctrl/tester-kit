@@ -1,0 +1,129 @@
+manifest_version: "1.0"
+
+# Khai báo nguồn đầu vào cho skill gen-test-plan.
+# Skill sinh 1 Master Test Plan cho CẢ DỰ ÁN (khác gen-testcase/estimate-test: 1 module = 1 Sheet).
+# LƯU Ý: thiếu project_name trên dòng lệnh => skill DỪNG hỏi xác nhận
+# project_name + version + release_scope, KHÔNG tự suy từ file này.
+
+run:
+  created_by: "qa@example.com"
+  reviewer: ""                     # người review/approve, ghi vào Cover!E10
+  purpose: "Master Test Plan cấp dự án theo chuẩn ISTQB + IEEE 829"
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  version: "1.0"                   # version của test plan, ghi vào Cover!E6
+  release_scope:
+    - "Release 1"
+  output_language: "vi"
+
+google:
+  master_template_file_id: ""      # TRỐNG => skill ghi "Cần xác nhận" và dừng ở bước tạo Sheet
+  master_template_source_file: "templates/template_testplan.xlsx"
+  target_drive_folder_id: ""       # folder Drive của dự án — TRỐNG => dừng ở bước tạo Sheet
+  spreadsheet_name_pattern: "TEM-ST02-01_Test Plan_{project_name}_v{version}"
+  import_note: "Import templates/template_testplan.xlsx lên Drive 1 lần để tạo master template, rồi điền file id vào đây. KHÔNG dùng chung master template với gen-testcase (12 sheet vs 7 sheet)."
+
+# Nguồn đầu vào. Path tương đối tính từ workspace root.
+sources:
+  - id: "SRC-DOC-01"
+    type: "design_doc"
+    path: "inputs/<ten-tai-lieu-thiet-ke>.xlsx"
+    version: "<version>"
+    provides:
+      - "test_basis"               # -> 01_Introduction 1.4 References
+      - "feature_scope"            # -> 02_Scope test 2.2, 2.3
+      - "nfr_threshold"            # -> 03_Test ApproachStrategy 3.2 + 03_1
+    note: "Dự án có nhiều tài liệu thiết kế thì thêm SRC-DOC-02, SRC-DOC-03... theo đúng mẫu này"
+    priority: 1
+
+  - id: "SRC-REG-01"
+    type: "module_registry"
+    path: "configs/module_registry.yaml"
+    provides:
+      - "feature_scope"            # -> danh sách tính năng PHẢI test (2.3) / KHÔNG test (2.4)
+      - "test_method_per_feature"  # -> 3.1 (dựa status: req_done / tc_done / out_of_scope)
+    priority: 3
+
+  - id: "SRC-REQ-01"
+    type: "requirement_package"
+    path_pattern: "knowledge/{module_name}"
+    files:
+      - "functional_requirements.md"
+      - "business_rules.md"
+      - "validation_rules.md"
+      - "impact_scope.md"
+      - "assumptions_and_open_points.md"
+    provides:
+      - "test_objective"           # -> 2.1
+      - "assumption"               # -> 2.5
+      - "constraint"               # -> 2.6
+      - "product_risk"             # -> 09_Risk management
+    priority: 4
+
+  - id: "SRC-EST-01"
+    type: "estimate_output"
+    path_pattern: "estimates/{module_name}/estimate_summary.md"
+    provides:
+      - "effort_plan"              # -> 07_Estimation & Schedule cột G / L / S
+    note: "Nguồn ưu tiên 1 cho sheet 07 (§7 istqb-alignment.md)"
+    priority: 5
+
+  - id: "SRC-TC-01"
+    type: "testcase_output"
+    path_pattern: "testcases/{module_name}/testcase_generation_summary.md"
+    provides:
+      - "testware_actual"          # -> 3.1 phương pháp test + 08_Deliverables
+    priority: 6
+
+  - id: "SRC-PLAN-01"
+    type: "project_plan"
+    path: ""                       # project plan / SOW / WBS — nguồn ưu tiên CAO NHẤT (§7)
+    provides:
+      - "release_milestone"        # -> 07 cột A + Plan date
+      - "human_resource"           # -> 04_Resources
+      - "constraint"
+    priority: 7
+
+  - id: "SRC-ENV-01"
+    type: "test_environment"
+    path: ""                       # tài liệu môi trường / device matrix / account & quyền
+    provides:
+      - "environment_spec"         # -> 05_Test Environment 5.1 / 5.2 / 5.3
+      - "config_matrix"            # -> 07 cột V..AA + test type 3.2.8
+    priority: 8
+
+  - id: "SRC-QNA-01"
+    type: "qna_log"
+    path: ""                       # bảng Q&A với PO/khách hàng
+    provides:
+      - "requirement_stability"    # -> 09 rủi ro "Yêu cầu bị thay đổi"
+      - "open_point"
+    priority: 9
+
+  - id: "SRC-PROCESS-01"
+    type: "org_process"
+    path: "inputs/<ten-tai-lieu-quy-trinh-test-cua-to-chuc>.xlsx"
+    provides:
+      - "org_test_strategy"        # -> 3.0 narrative + deviation khỏi quy trình tổ chức
+      - "deliverable_list"         # -> 08_Deliverables
+    note: "Quy trình test của tổ chức — copy file vào inputs/ nếu cần dùng"
+    priority: 10
+
+registry:
+  path: "configs/module_registry.yaml"
+  read_only: true                  # test plan chỉ ĐỌC registry, không cập nhật status
+
+context:
+  plan_level: "master"             # skill này chỉ sinh master (§5A.1)
+  product_has_ui: true
+  product_has_api: true
+  product_has_db: true
+  product_has_batch: true
+  has_third_party_integration: true
+  ui_language_japanese: true
+  uat_by_customer: true
+  is_enhancement: false            # true => bắt buộc có Regression Testing (§4 istqb-alignment.md)
+
+access_issues: []                  # file/nguồn không đọc được => skill nêu trong open_points.md

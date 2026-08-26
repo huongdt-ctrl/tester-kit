@@ -1,0 +1,112 @@
+manifest_version: "1.0"
+
+# Khai báo nguồn đầu vào cho skill estimate-test.
+# LƯU Ý: run.module_name chỉ là ghi chép — skill KHÔNG dùng field này để chọn module.
+# Không truyền tên module trên dòng lệnh thì skill sẽ hiện bảng danh sách rồi DỪNG hỏi.
+
+run:
+  module_name: ""                  # ghi chép lần chạy gần nhất, không có tác dụng chọn module
+  requested_by: "qa@example.com"
+  purpose: "Estimate effort test cho module theo luồng QA có AI hỗ trợ"
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  output_language: "vi"
+
+google:
+  master_template_file_id: ""      # TRỐNG => skill ghi "Cần xác nhận" và dừng ở bước tạo Sheet
+  master_template_source_file: "templates/template_test_estimate.xlsx"
+  target_drive_folder_id: ""
+  import_note: "Import file xlsx trên lên Google Drive 1 lần để tạo master template, rồi điền file id vào đây."
+
+# Nguồn đếm khối lượng. Path tương đối tính từ workspace root.
+sources:
+  - id: "SRC-TC-01"
+    type: "testcase_csv"
+    path_pattern: "testcases/{module_name}/testcase_draft.csv"
+    provides:
+      - "volume_testcase"          # -> A3, A4 (và phái sinh A4b, A5)
+    priority: 1
+
+  - id: "SRC-REQ-01"
+    type: "requirement_package"
+    path_pattern: "knowledge/{module_name}"
+    files:
+      - "functional_requirements.md"
+      - "business_rules.md"
+      - "validation_rules.md"
+      - "impact_scope.md"
+      - "assumptions_and_open_points.md"
+      - "traceability_matrix.md"
+    provides:
+      - "volume_requirement_item"  # -> A2
+      - "complexity_criteria"
+      - "cross_module_signal"
+    priority: 2
+
+  - id: "SRC-OP-01"
+    type: "open_points"
+    path_pattern: "testcases/{module_name}/open_points.md"
+    provides:
+      - "requirement_stability"    # -> số vòng Q&A (A2b) + multiplier requirement_unstable
+    priority: 3
+
+  - id: "SRC-TICKET-01"
+    type: "ticket"
+    path: ""                       # điền link/ID ticket task test do AI gen
+    provides:
+      - "volume_ticket"            # -> A1
+    priority: 4
+
+  - id: "SRC-DOC-01"
+    type: "requirement_document"
+    path: "inputs/<ten-tai-lieu-thiet-ke>.xlsx"
+    provides:
+      - "complexity_criteria"
+      - "volume_requirement_item"
+    note: "Tài liệu thiết kế gốc (dự án Nhật: 設計書) — chỉ dùng khi requirement package chưa có"
+    priority: 5
+
+  - id: "SRC-ENV-01"
+    type: "test_environment"
+    path: ""                       # link môi trường test / tài liệu account & quyền
+    provides:
+      - "volume_environment"       # -> S1
+    note: "Đã dựng từ module trước => S1 Volume = 0, ghi Note trỏ về dòng project_level"
+    priority: 6
+
+  - id: "SRC-DATA-01"
+    type: "test_data"
+    path: ""                       # script seed / file import / danh sách account đặc thù
+    provides:
+      - "volume_test_data"         # -> S2
+    priority: 7
+
+  - id: "SRC-EFFORT-LOG-01"
+    type: "effort_log"
+    path: ""                       # điền khi có log giờ thực tế để calibrate base rate
+    provides:
+      - "calibration_data"
+    priority: 8
+
+registry:
+  path: "configs/module_registry.yaml"
+  status_field_to_update: "status"
+  output_field_to_update: "estimate_output"
+  status_value_when_done: "est_done"
+
+context:
+  ai_driver: "qa"                  # qa | ba | dev — ai chạy skill AI gen; "qa" => tính đủ G1..G5
+  ai_output_maturity: "stable"     # pilot | stable | mature (=> rework_rounds 2 | 1 | 0.5)
+  module_type: "new"               # new | modify
+  test_env_ready: false            # true => S1 Volume = 0, trỏ về dòng project_level
+  shared_test_data_ready: false    # true => S2 Volume = 0, trỏ về dòng project_level
+  ui_language_japanese: true
+  team_levels_available:
+    - "Junior"
+    - "Middle"
+    - "Senior"
+  default_level_when_unassigned: "Middle"
+
+access_issues: []                  # ghi lại file/nguồn không đọc được để skill nêu trong open_points

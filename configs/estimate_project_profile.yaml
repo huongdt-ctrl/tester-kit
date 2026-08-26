@@ -1,0 +1,201 @@
+profile_version: "1.0"
+
+# Profile dự án cho skill estimate-test.
+# Hệ số gốc nằm ở sheet "Rate Card" của template + references/estimation-model.md.
+# File này chỉ override phần khác biệt theo dự án.
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  default_language: "vi"
+  timezone: "Asia/Ho_Chi_Minh"
+
+output:
+  output_root: "estimates"
+  evidence_root: "evidence_estimate"
+  summary_file_name: "estimate_summary.md"
+  traceability_file_name: "estimate_traceability_matrix.md"
+  open_points_file_name: "open_points.md"
+  google_sheet_primary_output: true
+  one_google_sheet_per_module: true
+
+google_sheet_policy:
+  create_method: "duplicate_master_template"
+  preserve_template_formatting: true
+  preserve_formulas: true          # BẮT BUỘC — Estimate Summary sống bằng SUMIF/VLOOKUP
+  preserve_data_validation: true
+  preserve_frozen_row: true
+  allow_extra_worksheets: false
+  writable_worksheets:
+    - "Estimate Detail"
+    - "Assumptions & Risks"
+  readonly_worksheets:
+    - "Estimate Summary"           # toàn bộ là formula
+    - "Rate Card"                  # chỉ người dùng tune, skill không ghi trừ khi được yêu cầu
+
+naming_convention:
+  spreadsheet_name_pattern: "{project_code}_{module_name}_test_estimate"
+  module_name_style: "snake_case"
+
+# Worksheet + cột của template_test_estimate.xlsx (sinh bởi
+# ~/.claude/skills/estimate-test/scripts/build_estimate_template.py).
+worksheets:
+  rate_card: "Rate Card"
+  detail: "Estimate Detail"
+  summary: "Estimate Summary"
+  assumptions: "Assumptions & Risks"
+
+detail_layout:
+  header_row: 3
+  first_data_row: 4
+  last_data_row: 200
+  total_row: 202
+
+template_header_aliases:
+  function:
+    - "Function"
+  activity:
+    - "Activity"
+  activity_name:
+    - "Activity name"
+  complexity:
+    - "Complexity"
+  volume:
+    - "Volume"
+  unit:
+    - "Đơn vị"
+  base_rate:
+    - "Base rate (h)"
+  level:
+    - "Level"
+  level_factor:
+    - "Level factor"
+  multiplier:
+    - "Multiplier"
+  level_check:
+    - "Level check"
+  adjusted_hours:
+    - "Adjusted (h)"
+  note:
+    - "Note"
+
+# Cột do formula tính — skill KHÔNG được ghi giá trị tĩnh lên.
+formula_columns:
+  - "activity_name"
+  - "unit"
+  - "base_rate"
+  - "level_factor"
+  - "level_check"
+  - "adjusted_hours"
+write_policy_formula_columns: "skill_must_not_write"
+
+activities:
+  # 18 activity, đúng thứ tự luồng. G* = chỉ định AI gen · A* = người làm
+  # S* = support không giao được cho AI · R1 = rework.
+  required_codes:
+    - "G1"      # chuẩn bị input + chỉ định AI gen ticket task test
+    - "A1"      # review ticket AI gen
+    - "G2"      # dựng manifest + chỉ định AI gen requirement
+    - "A2"      # đọc hiểu + review requirement AI tạo
+    - "A2b"     # Q&A phân tích yêu cầu + confirm PO
+    - "G3"      # chỉ định AI gen test case
+    - "A3"      # review test case AI gen + update
+    - "S1"      # setup môi trường + account/quyền (project-level)
+    - "S2"      # chuẩn bị test data (project-level nếu dùng chung)
+    - "A4"      # execute test
+    - "G4"      # cung cấp evidence + chỉ định AI log bug
+    - "A4b"     # review bug AI log
+    - "A5"      # verify bug
+    - "S3"      # follow-up bug (reject / reopen / trao đổi dev)
+    - "S4"      # regression test vùng ảnh hưởng
+    - "R1"      # re-prompt + review lại (rework)
+    - "G5"      # chỉ định AI gen test report
+    - "A6"      # review + chốt test report, cập nhật status ticket
+  allow_zero_volume_with_reason: true
+  forbid_removing_row: true
+  project_level_codes:
+    - "S1"
+    - "S2"
+  project_level_function_name: "project_level"
+  meeting_time_policy: "included_in_buffer"   # không thêm activity cho giờ họp
+
+complexity:
+  allowed_values:
+    - "S"
+    - "M"
+    - "L"
+    - "XL"
+  tie_break: "higher"              # hoà nhau → lấy mức cao hơn
+
+level:
+  allowed_values:
+    - "Fresher"
+    - "Junior"
+    - "Middle"
+    - "Senior"
+  baseline: "Middle"
+  default_when_unassigned: "Middle"
+  assign_per_activity_row: true
+  below_min_level_policy: "add_senior_review_surcharge_and_warn"
+
+# Override tham số của Rate Card cho dự án này (bỏ trống = dùng default của template).
+parameter_overrides:
+  expected_defect_rate: null       # default 0.25 — bug = TC × rate (G4, A4b)
+  retest_rounds: null              # default 2    — A5
+  bug_followup_rate: null          # default 0.30 — bug reject/reopen (S3)
+  regression_scope_rate: null      # default 0.30 — TC chạy lại (S4)
+  rework_rounds: null              # default 1    — R1; AI pilot → 2, mature → 0.5
+  qa_round_per_module: null        # default 1    — A2b
+  buffer_pct: null                 # default 0.15 — đã gồm giờ họp / communication
+  hours_per_manday: null           # default 8
+  tc_per_fr_fallback: null         # default 3
+
+volume_source:
+  testcase_csv_pattern: "testcases/{module_name}/testcase_draft.csv"
+  requirement_dir_pattern: "knowledge/{module_name}"
+  open_points_pattern: "testcases/{module_name}/open_points.md"
+  fallback_when_no_testcase: "fr_count_x_tc_per_fr_fallback"
+  fallback_confidence: "Thấp"
+
+multiplier_triggers:
+  requirement_unstable_when_open_points_gte: 5
+  qa_round_2_when_open_points_gte: 5
+  qa_round_3_when_open_points_gte: 10
+  rework_rounds_when_ai_pilot: 2
+  rework_rounds_when_ai_mature: 0.5
+  ui_japanese: true                # bật khi UI của dự án là tiếng Nhật
+  ai_output_maturity: "stable"
+
+estimate_scope:
+  include_headcount: false
+  include_duration: false
+  note: "Estimate chỉ chốt độ phức tạp + khối lượng + level. Chia người và lịch làm ở bước planning."
+
+open_points:
+  enabled: true
+  create_when:
+    - "missing_testcase_source"
+    - "missing_requirement_source"
+    - "unclear_complexity_criteria"
+    - "unclear_volume_count"
+    - "level_below_minimum"
+    - "missing_google_master_template_file_id"
+
+review_policy:
+  mandatory_checks:
+    - "google_sheet_created_or_marked_need_confirmation"
+    - "all_eighteen_activities_present"
+    - "ai_gen_activities_counted_or_zero_with_reason"
+    - "project_level_rows_not_duplicated_per_module"
+    - "every_row_has_function_activity_complexity_volume_level"
+    - "volume_traceable_to_source"
+    - "formula_columns_untouched"
+    - "summary_total_not_zero"
+    - "level_total_equals_activity_total"
+    - "assumptions_sheet_not_empty"
+    - "no_headcount_or_duration_column"
+
+notes:
+  - "Base rate trong template là DEFAULT chưa calibrate bằng log effort thực tế — báo cáo phải nói rõ."
+  - "Calibrate theo references/estimation-model.md §6 sau 2-3 module có số giờ thực tế."
+  - "Layout row/column ở file này khớp template sinh ngày 2026-08-17; regen template thì kiểm tra lại detail_layout."

@@ -1,0 +1,9 @@
+*.pyc
+.pytest_cache/
+.DS_Store
+__pycache__/
+
+# KHONG BAO GIO commit credential hay du lieu khach hang
+.env
+*service_account*.json
+credentials*.json

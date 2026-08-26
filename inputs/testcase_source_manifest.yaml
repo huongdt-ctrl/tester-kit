@@ -1,0 +1,173 @@
+manifest_version: "1.0"
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  domain: "CAN_DIEN"   # vd: ticketing, ecommerce, fintech, logistics
+  project_root: "."
+  output_root: "testcases"
+  evidence_root: "evidence_testcase"
+  output_language: "vi"
+  timezone: "Asia/Ho_Chi_Minh"
+
+run:
+  module_name: ""          # KHÔNG dùng để chọn module — skill LUÔN hiển thị danh sách và hỏi (xem configs/module_registry.yaml)
+  last_run_module: ""      # chỉ ghi vết lần chạy gần nhất
+  analysis_mode: "baseline"
+  generate_google_sheet: true
+  generate_summary: true
+  generate_traceability: true
+  generate_open_points: true
+
+issue_tracker:
+  system: "gitlab" # jira | redmine | gitlab | other
+  base_url: "https://gitlab.example.com/your-group/your-project"
+  project_path: "your-group/your-project"
+  issues_list_url: "https://gitlab.example.com/your-group/your-project/-/issues"
+  browse_pattern: "{base_url}/-/issues/{issue_id}"
+
+template:
+  local_excel_template_path: "./templates/template_testcase.xlsx"
+  template_type: "excel"
+  source_of_truth: true
+  expected_target_type: "google_sheet"
+  # Giá trị dưới đây ĐỌC TRỰC TIẾP từ template_testcase.xlsx, không phải giả định.
+  worksheet_name: "Function {Name}"   # template có 7 sheet; sheet chứa bảng test case tên đúng như vậy
+  all_worksheets:                      # chỉ ghi vào worksheet_name, các sheet còn lại không đụng
+    - "Cover"
+    - "Table of content"
+    - "Test report"
+    - "Scope test"
+    - "Function {Name}"
+    - "Test data"
+    - "Evidences"
+  header_row_index: 10                 # hàng 1-6 là thông tin đầu tài liệu; hàng 10 mới là header
+  level_label_row_index: 11            # hàng 11 là nhãn phân cấp I / II / III của cột Classification
+  data_start_row_index: 12             # hàng 12 là dòng dữ liệu (template có sẵn 1 dòng mẫu TC_001)
+  document_header_fields:              # skill điền các ô này ở đầu sheet
+    function_name_cell: "B2"
+    screen_name_cell: "B3"
+    creator_cell: "B4"
+    created_date_cell: "B5"
+    reference_cell: "B6"
+  use_existing_format: true
+  preserve_dropdowns: true
+  preserve_data_validation: true
+  preserve_conditional_formatting: true
+  data_validation_ranges:              # vùng dropdown khai báo sẵn trong template
+    priority: "E12:E20"
+    test_result_round1: "K12:K20"
+    test_result_round2: "P12:P20"
+  extend_data_validation_to_last_row: true   # bộ test case dài hơn 9 dòng thì phải mở rộng vùng dropdown
+  sample_rows_to_clear: 9                    # template có sẵn 9 dòng mẫu TC_001..TC_009 (hàng 12-20), phải xoá trước khi ghi
+  summary_formula_ranges:                    # bảng thống kê ở đầu sheet + sheet "Test report" tham chiếu vùng test case
+    function_sheet_summary: "H2:O5"
+    report_sheet: "Test report"
+  extend_summary_formula_to_last_row: true   # ghi quá hàng 20 mà không mở rộng công thức thì thống kê Passed/Failed sai
+
+google_output:
+  enabled: true
+  create_method: "duplicate_master_template"
+  google_master_template_file_id: "CAN_DIEN_FILE_ID"  # Google Sheet "template_testcase": phải đủ 7 sheet, header hàng 10, nhãn I/II/III hàng 11
+  uploaded_xlsx_file_id: "CAN_DIEN_FILE_ID"           # bản xlsx gốc trên Drive, giữ để đối chiếu
+  master_template_url: "https://docs.google.com/spreadsheets/d/CAN_DIEN_FILE_ID/edit"
+  target_drive_folder_id: "CAN_DIEN_FILE_ID"
+  target_drive_folder_url: "https://drive.google.com/drive/folders/CAN_DIEN_FILE_ID"
+  spreadsheet_name_pattern: "{project_code}_{module_name}_manual_testcases"
+  worksheet_name: "Function {Name}"
+  move_to_target_folder: true
+  share_settings:
+    enabled: false
+    editors: []
+    viewers: []
+
+source_selection:
+  include_status:
+    - "approved"
+    - "confirmed"
+    - "reference"
+    - "draft"
+  exclude_status:
+    - "obsolete"
+    - "rejected"
+  prioritize_requirement_package: true
+  allow_inaccessible_sources: true
+
+sources:
+  # --- Requirement package sinh bởi gen-requirement (ưu tiên cao nhất) ---
+  - id: "SRC-REQ-001"
+    type: "functional_requirements"
+    title: "Functional Requirements - Sample Project"
+    location: "./knowledge/{module_name}/functional_requirements.md"
+    status: "approved"
+    priority: "high"
+    relevance: "high"
+    notes: "Nguồn requirement chính cho FR. Thay {module_name} bằng module thực tế khi chạy."
+
+  - id: "SRC-REQ-002"
+    type: "business_rules"
+    title: "Business Rules - Sample Project"
+    location: "./knowledge/{module_name}/business_rules.md"
+    status: "approved"
+    priority: "high"
+    relevance: "high"
+    notes: "Nguồn chính cho business rules."
+
+  - id: "SRC-REQ-003"
+    type: "validation_rules"
+    title: "Validation Rules - Sample Project"
+    location: "./knowledge/{module_name}/validation_rules.md"
+    status: "approved"
+    priority: "high"
+    relevance: "high"
+    notes: "Nguồn chính cho form validation."
+
+  # --- Nguồn gốc từ Drive / issue tracker ---
+  # 3 entry dưới đây là MẪU cho 3 kiểu source hay gặp: tài liệu thiết kế (file trên Drive),
+  # issue tracker, và bản tài liệu cũ đã bị thay thế. Thêm SRC-003, SRC-004... nếu cần.
+  - id: "SRC-001"
+    type: "requirement_doc"
+    title: "<Ten tai lieu thiet ke>"
+    location: "https://drive.google.com/file/d/CAN_DIEN_FILE_ID/view"
+    drive_file_id: "CAN_DIEN_FILE_ID"
+    version: "<version>"
+    status: "approved"
+    priority: "high"
+    relevance: "high"
+    auth_required: true
+    notes: "Tài liệu thiết kế / requirement gốc. Source of truth cho chi tiết màn hình/UI/validation."
+
+  - id: "SRC-002"
+    type: "issue"
+    issue_system: "gitlab"
+    title: "<Danh sach issue cua du an>"
+    location: "https://gitlab.example.com/your-group/your-project/-/issues"
+    status: "reference"
+    priority: "medium"
+    relevance: "medium"
+    auth_required: true
+    notes: "Danh sách issue của project, chưa chỉ định issue cụ thể."
+
+  - id: "SRC-001-OLD"
+    type: "requirement_doc"
+    title: "<Ten tai lieu thiet ke> (bản cũ)"
+    location: "https://drive.google.com/file/d/CAN_DIEN_FILE_ID/view"
+    drive_file_id: "CAN_DIEN_FILE_ID"
+    version: "<version cu>"
+    status: "obsolete"
+    priority: "low"
+    relevance: "low"
+    notes: "Bị thay thế bởi SRC-001. Giữ để truy vết, skill tự loại theo exclude_status."
+
+output_policy:
+  required_outputs:
+    - "google_sheet"
+    - "testcase_generation_summary.md"
+    - "testcase_traceability_matrix.md"
+    - "open_points.md"
+
+notes:
+  - "Source kiểu issue hỗ trợ Jira, Redmine, GitLab hoặc hệ thống tương đương."
+  - "Thiếu google_master_template_file_id thì skill dừng ở bước tạo Google Sheet và ghi open point."
+  - "Quy tắc chọn bản tài liệu (ví dụ cho dự án Nhật, 外部設計書 = tài liệu thiết kế ngoài): tên file dạng <hệ thống>_<tên chức năng>_外部設計書_<version>_<yyyymmdd><rev> → lấy version lớn nhất, tie thì lấy yyyymmdd lớn nhất. Ưu tiên file tiếng Nhật có 外部設計書 trong tên."
+  - "Nếu trong folder có file tên gần giống nhưng chưa rõ vai trò thì KHÔNG khai làm source — ghi vào open_points để hỏi lại."

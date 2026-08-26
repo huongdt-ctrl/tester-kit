@@ -1,0 +1,83 @@
+manifest_version: "1.0"
+
+# Thu tu uu tien: profile < manifest < CLI param.
+# Key trung ten voi configs/log_bug_project_profile.yaml se GHI DE profile.
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  output_language: "vi"
+  timezone: "Asia/Ho_Chi_Minh"
+
+run:
+  module_name: "event_editing"
+  # dry_run: true -> render + dedup nhung KHONG tao issue that. De thu truoc.
+  dry_run: true
+
+tracker:
+  # Chon MOT trong: redmine | gitlab | jira
+  system: "gitlab"
+
+  # --- Khi system = gitlab ---
+  base_url: "https://gitlab.example.com"
+  project_path: "your-group/your-project"
+  token: "env:GITLAB_TOKEN"        # KHONG ghi plaintext
+  # GitLab assignee can user ID dang so, khong nhan username.
+  # GitLab KHONG co start_date cho issue -> se nhung vao description.
+
+  # --- Khi system = redmine, dung cac key nay thay the ---
+  # base_url: "https://redmine.example.com"
+  # api_key: "env:REDMINE_API_KEY"
+  # project_id: "sample-project"
+  # tracker_id: 1        # id cua tracker "Bug"
+  # status_id: 1         # id cua status "New/Open"
+  # priority_id: 2
+
+  # --- Khi system = jira, dung cac key nay thay the ---
+  # base_url: "https://your-domain.atlassian.net"
+  # email: "qa@example.com"
+  # api_token: "env:JIRA_API_TOKEN"
+  # project_key: "PROJ"
+  # assignee_field: "accountId"   # accountId cho Jira Cloud, name cho Server/DC
+
+  timeout_seconds: 30
+
+bug_policy:
+  bug_title_pattern: "[{parent_ticket}][{screen}] {summary}"
+  require_severity: true
+  require_priority: true
+  require_scope: false
+  require_parent_ticket: true
+  ui_merge:
+    enabled: true
+    min_errors_same_item: 3
+    max_errors_same_item: 5
+  duplicate_handling: "skip"   # skip | warn_only
+  priority_map:
+    High: "High"
+    Medium: "Normal"
+    Low: "Low"
+  default_labels: []
+
+# Gia tri mac dinh dien vao bug khi agent khong khai ro tung bug.
+# Muc dich: khoi phai lap lai Device/OS/Browser cho tung bug trong cung 1 dot test.
+defaults:
+  device: "Laptop (MAC)"
+  os_version: "14.4.1"
+  browser: "Chrome"
+  status: "Open"
+  scope: "Frontend"
+  assignee:            # user ID (GitLab) / accountId (Jira) / id (Redmine)
+  assignee_name:       # ten de hien trong description
+  parent_ticket:       # ID/ma ticket cha, vd "#1234" hoac "PROJ-12"
+  sheet_name: "Manual Test Cases"
+
+paths:
+  bug_reports_root: "bug_reports"    # code doc: noi ghi bug_registry.json
+  bug_evidence_root: "bug_evidence"  # THAM CHIEU: quy uoc cho agent dat evidence
+
+notes:
+  - "dry_run: true de thu render truoc; doi sang false moi tao bug that."
+  - "Doi tracker chi can doi tracker.system va block key tuong ung."
+  - "token/api_key/api_token doc tu environment variable, khong ghi plaintext vao file nay."
+  - "Bug logic khong bao gio duoc gop, ke ca khi ui_merge.enabled = true."
