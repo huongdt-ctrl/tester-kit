@@ -88,7 +88,7 @@ Chạy tay:
 
 ```bash
 pip install -r requirements.txt pytest
-./test-pack.sh                  # 37 kiểm: cài đặt, không ghi đè, test skill, không lọt dữ liệu
+./test-pack.sh                  # 38 kiểm: cài đặt, không ghi đè, test skill, không lọt dữ liệu
 ```
 
 Test riêng từng skill:
@@ -112,6 +112,15 @@ Chạy được offline, không cần tracker thật (test regression tự dựn
 
 - Python 3.9+, `pyyaml`, `requests`, `openpyxl`
 - Google Sheet (tuỳ chọn): service account JSON, trỏ qua `GOOGLE_APPLICATION_CREDENTIALS`
+
+## Thêm thư mục nội dung mới thì phải khai
+
+`test-pack.sh` và `ci.yml` chỉ quét dữ liệu khách hàng trong danh sách `SCAN_TARGETS`
+(`skills` · `configs` · `inputs` · `templates` · `README.md` · `requirements.txt` · `install.sh`).
+
+Thêm thư mục nội dung mới → khai vào `SCAN_TARGETS` **ở cả hai file**. Quên thì test
+**fail ngay** với tên thư mục đó, không âm thầm bỏ qua. File tooling thì khai vào
+`SCAN_IGNORE`.
 
 ## Đang còn nợ
 

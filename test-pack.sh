@@ -20,6 +20,12 @@ head_() { printf "\n== %s ==\n" "$*"; }
 
 SKILLS="create-test-schedule estimate-test execute-testcase gen-requirement gen-testcase gen-test-plan log-bug"
 
+# Cai gi LA noi dung phat di -> phai duoc quet du lieu khach hang.
+SCAN_TARGETS="skills configs inputs templates README.md requirements.txt install.sh"
+# Cai gi la tooling -> khong quet. Danh sach nay PHAI ngan va on dinh; khong chac
+# thi de vao SCAN_TARGETS cho an toan.
+SCAN_IGNORE=".git .github .gitignore test-pack.sh"
+
 # ---------- 1. Cai vao du an trong ----------
 head_ "1. Cai vao du an trong"
 mkdir -p "$SANDBOX/home" "$SANDBOX/duan"
@@ -73,6 +79,24 @@ for s in $SKILLS; do
 done
 
 # ---------- 4. Khong lot du lieu khach ----------
+# Chan diem mu cua allowlist TRUOC khi quet.
+#
+# Allowlist an hon --exclude voi file tooling, nhung doi lai co diem mu: them
+# thu muc NOI DUNG moi ma quen khai thi no khong duoc quet, va khong ai biet.
+# "Nho khai" la loai luat nguoi ta quen -- chinh minh da quen 2 lan trong 1 buoi.
+# Nen khong dua vao tri nho: doi chieu top-level thuc te, thieu khai la FAIL.
+head_ "4a. Allowlist quet co phu het noi dung khong"
+uncovered=0
+for entry in $(ls -A "$PACK_DIR"); do
+  case " $SCAN_TARGETS $SCAN_IGNORE " in
+    *" $entry "*) ;;
+    *) bad "'$entry' chua khai o SCAN_TARGETS lan SCAN_IGNORE -> dang bi quet BO QUA"
+       uncovered=$((uncovered+1)) ;;
+  esac
+done
+[ "$uncovered" = "0" ] && ok "moi thu muc/file top-level da duoc khai" \
+  || bad "$uncovered muc chua khai -- them vao SCAN_TARGETS (neu la noi dung) hoac SCAN_IGNORE (neu la tooling)"
+
 head_ "4. Khong lot du lieu khach hang / credential"
 # Chi quet NOI DUNG duoc phat di, khong quet ca cay.
 #
@@ -80,8 +104,6 @@ head_ "4. Khong lot du lieu khach hang / credential"
 # regex "gettii" nen tu bat minh, roi .github/workflows/ci.yml cung vay. Cu
 # them exclude thi lan sau co file tooling moi lai vap tiep.
 # Liet ke tuong minh cai gi LA noi dung -> file tooling them vao khong lam nhieu.
-SCAN_TARGETS="skills configs inputs templates README.md requirements.txt install.sh"
-
 scan_paths() {
   for t in $SCAN_TARGETS; do
     [ -e "$PACK_DIR/$t" ] && printf "%s\n" "$PACK_DIR/$t"

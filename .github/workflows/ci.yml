@@ -55,7 +55,19 @@ jobs:
           # Ly do khong dung --exclude: chinh file nay chua regex "gettii" nen
           # quet ca cay la tu bat minh (da vap 2 lan).
           TARGETS="skills configs inputs templates README.md requirements.txt install.sh"
+          IGNORE=".git .github .gitignore test-pack.sh"
           paths() { for t in $TARGETS; do [ -e "$t" ] && printf "%s\n" "$t"; done; }
+
+          # Chan diem mu cua allowlist: them thu muc NOI DUNG moi ma quen khai
+          # thi no khong duoc quet va khong ai biet. Doi chieu top-level thuc te
+          # thay vi dua vao tri nho. Giong het kiem 4a trong test-pack.sh.
+          for entry in $(ls -A); do
+            case " $TARGETS $IGNORE " in
+              *" $entry "*) ;;
+              *) echo "::error::'$entry' chua khai o TARGETS lan IGNORE -> dang bi quet BO QUA"
+                 fail=1 ;;
+            esac
+          done
 
           check() {   # $1 = mo ta, $2 = regex
             if paths | xargs grep -rniE "$2" >/dev/null 2>&1; then
