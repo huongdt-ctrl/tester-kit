@@ -1,4 +1,4 @@
-# qa-ai-pack
+# sqa-kit
 
 Bộ 7 skill Claude Code phủ trọn vòng đời QA — từ đọc tài liệu nghiệp vụ tới log bug lên tracker.
 Đóng gói từ một dự án thật để dùng lại cho mọi dự án khác.
@@ -6,12 +6,12 @@ Bộ 7 skill Claude Code phủ trọn vòng đời QA — từ đọc tài liệ
 ## Cài
 
 ```bash
-git clone <url-repo> qa-ai-pack
-cd qa-ai-pack
+git clone https://github.com/huongdt-ctrl/sqa-kit.git
+cd sqa-kit
 ./install.sh /duong/dan/toi/du-an-cua-ban
 ```
 
-Xong 2 việc: đăng ký 7 skill vào `~/.claude/skills/`, và dựng `configs/` + `inputs/` trong dự án đích.
+Xong 2 việc: đăng ký 7 skill vào `~/.claude/skills/`, và dựng `configs/` + `inputs/` + `templates/` trong dự án đích.
 
 Chạy lại lúc nào cũng được — **file cấu hình đã có sẽ không bị ghi đè**.
 
@@ -57,6 +57,17 @@ export TEST_PASSWORD=...       # tài khoản môi trường test
 ```
 
 Trong YAML chỉ ghi tên biến: `token: "env:GITLAB_TOKEN"`. Ghi thẳng giá trị → skill **từ chối chạy**.
+
+## `templates/` — khung tài liệu output
+
+8 file khung mà `gen-requirement`, `gen-testcase`, `estimate-test`, `gen-test-plan` ghi kết quả vào:
+`business_rules.md` · `functional_requirements.md` · `validation_rules.md` · `traceability_matrix.md` ·
+`impact_scope.md` · `source_inventory.md` · `assumptions_and_open_points.md` · `excel_testcase_schema.yaml`
+
+Dùng placeholder `<module_name>`, `<project_code>` — skill tự điền. **Đừng xoá**: 4/7 skill tham
+chiếu trực tiếp theo tên file.
+
+Template `.xlsx` nằm trong từng skill (`skills/<ten>/templates/`), không ở đây.
 
 ## Cấu hình gộp theo 3 tầng
 
