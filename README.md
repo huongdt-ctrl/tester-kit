@@ -1,4 +1,4 @@
-# sqa-kit
+# tester-kit
 
 Bộ 7 skill Claude Code phủ trọn vòng đời QA — từ đọc tài liệu nghiệp vụ tới log bug lên tracker.
 Đóng gói từ một dự án thật để dùng lại cho mọi dự án khác.
@@ -6,8 +6,8 @@ Bộ 7 skill Claude Code phủ trọn vòng đời QA — từ đọc tài liệ
 ## Cài
 
 ```bash
-git clone https://github.com/huongdt-ctrl/sqa-kit.git
-cd sqa-kit
+git clone https://github.com/huongdt-ctrl/tester-kit.git
+cd tester-kit
 ./install.sh /duong/dan/toi/du-an-cua-ban
 ```
 
