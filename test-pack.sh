@@ -34,6 +34,21 @@ done
 [ -f "$SANDBOX/duan/configs/module_registry.yaml" ] && ok "sinh configs/" || bad "khong sinh configs/"
 [ -f "$SANDBOX/duan/inputs/log_bug_manifest.yaml" ]  && ok "sinh inputs/"  || bad "khong sinh inputs/"
 
+# Tung mac loi: xoa ca thu muc templates/ vi thay .xlsx bi trung trong skill,
+# keo theo mat 8 template .md ma 4 skill dang tham chieu. Chan lai bang cach
+# doi chieu THUC TE: moi ten template duoc SKILL.md nhac den phai ton tai.
+head_ "1b. Template ma skill tham chieu phai co that"
+missing=0
+for name in $(grep -rhoE "(business_rules|functional_requirements|validation_rules|traceability_matrix|impact_scope|source_inventory|assumptions_and_open_points)" "$PACK_DIR"/skills/*/SKILL.md 2>/dev/null | sort -u); do
+  if [ -f "$PACK_DIR/templates/$name.md" ]; then ok "co templates/$name.md"
+  else bad "THIEU templates/$name.md (skill dang tham chieu)"; missing=$((missing+1)); fi
+done
+[ -f "$PACK_DIR/templates/excel_testcase_schema.yaml" ] && ok "co templates/excel_testcase_schema.yaml" || bad "THIEU templates/excel_testcase_schema.yaml"
+for x in $(find "$PACK_DIR/skills" -name "*.xlsx" -not -path "*/fixtures/*" 2>/dev/null); do
+  ok "template xlsx nam trong skill: $(basename "$x")"
+done
+[ -d "$SANDBOX/duan/templates" ] && ok "install sinh templates/ cho du an" || bad "install KHONG sinh templates/"
+
 # ---------- 2. Cai lai khong ghi de ----------
 head_ "2. Cai lai khong ghi de cau hinh da sua"
 echo "# nguoi dung tu sua" >> "$SANDBOX/duan/configs/module_registry.yaml"

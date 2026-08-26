@@ -56,10 +56,10 @@ if [ -n "$TARGET" ]; then
   head_ "Dung khung du an tai $TARGET"
   [ -d "$TARGET" ] || { echo "  LOI: khong co thu muc $TARGET" >&2; exit 1; }
   created=0; skipped=0
-  for sub in configs inputs; do
+  for sub in configs inputs templates; do
     mkdir -p "$TARGET/$sub"
-    for f in "$PACK_DIR/$sub"/*.yaml; do
-      [ -e "$f" ] || continue
+    for f in "$PACK_DIR/$sub"/*; do
+      [ -f "$f" ] || continue
       out="$TARGET/$sub/$(basename "$f")"
       if [ -e "$out" ]; then say "giu nguyen  $sub/$(basename "$f")"; skipped=$((skipped+1))
       else cp "$f" "$out"; say "tao         $sub/$(basename "$f")"; created=$((created+1)); fi
