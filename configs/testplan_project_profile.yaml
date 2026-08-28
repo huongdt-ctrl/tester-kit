@@ -12,6 +12,7 @@ project:
   timezone: "Asia/Ho_Chi_Minh"
 
 output:
+  mode: "google_sheet"                  # google_sheet | local_xlsx (xem SKILL.md §8)
   output_root: "testplans"
   evidence_root: "evidence_testplan"
   summary_file_name: "testplan_generation_summary.md"

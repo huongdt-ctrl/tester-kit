@@ -1,6 +1,6 @@
 ---
 name: gen-test-plan
-description: "[personal] Sinh Master Test Plan cho cả dự án theo chuẩn ISTQB (CTFL v4.0 §5 Test Management) + IEEE 829, xuất ra 1 Google Sheet duplicate từ master template import từ file template_testplan.xlsx (TEM-ST02-01) đi kèm skill. Phủ đủ 12 sheet: Cover, Introduction, Scope test, Test Approach/Strategy (+ guideline 15 test type), Resources, Test Environment, Criteria (entry/exit/suspension), Estimation & Schedule, Deliverables, Risk management. Chạy được ngay khi có tài liệu nghiệp vụ (設計書/spec/ticket/project plan) — không cần chờ xong requirement hay test case. Triggers (VI): 'gen test plan', 'tạo test plan', 'lập kế hoạch test', 'viết test plan', 'master test plan'."
+description: "[personal] Sinh Master Test Plan cho cả dự án theo chuẩn ISTQB (CTFL v4.0 §5 Test Management) + IEEE 829, xuất ra 1 file duy nhất cho cả dự án — chọn Google Sheet (duplicate master template trên Drive) hoặc .xlsx local (ghi bằng openpyxl), từ template TEM-ST02-01 đi kèm skill. Phủ đủ 12 sheet: Cover, Introduction, Scope test, Test Approach/Strategy (+ guideline 15 test type), Resources, Test Environment, Criteria (entry/exit/suspension), Estimation & Schedule, Deliverables, Risk management. Chạy được ngay khi có tài liệu nghiệp vụ (設計書/spec/ticket/project plan) — không cần chờ xong requirement hay test case. Triggers (VI): 'gen test plan', 'tạo test plan', 'lập kế hoạch test', 'viết test plan', 'master test plan'."
 ---
 
 # Skill: gen-test-plan
@@ -61,6 +61,7 @@ Ví dụ:
 | `MANIFEST_PATH` | File khai báo source đầu vào | `./inputs/testplan_source_manifest.yaml` |
 | `PROFILE_PATH` | File cấu hình quy tắc dự án | `./configs/testplan_project_profile.yaml` |
 | `OUTPUT_ROOT` | Thư mục output phụ | `testplans` |
+| `output.mode` | `google_sheet` \| `local_xlsx` (profile) | `google_sheet` |
 | `EVIDENCE_ROOT` | Thư mục evidence | `evidence_testplan` |
 
 Manifest tối thiểu:
@@ -155,16 +156,31 @@ Trong đó `<skill_dir>` là thư mục chứa chính file `SKILL.md` này — h
 `~/.claude/skills/gen-test-plan/`. KHÔNG dùng path tương đối `./templates/...` vì nó resolve theo
 working directory của project đang mở, nên sẽ trỏ sai khi skill được gọi từ project khác.
 
-Nguyên tắc vận hành:
-- File xlsx là template nguồn của công ty (`TEM-ST02-01`), **read-only**, cấm sửa
-- Template nguồn cần được import lên Google Drive **1 lần** để tạo Google Sheet master template
-- Mỗi lần sinh test plan, skill tạo 1 file Google Sheet mới bằng cách **duplicate** master template
-- File mới đặt vào folder Drive của dự án theo `google.target_drive_folder_id`
-- Tên file theo `google.spreadsheet_name_pattern`
+Skill hỗ trợ **2 dạng output**, chọn theo `output.mode` trong profile (default `google_sheet`):
+
+| `output.mode` | Cách tạo | Dùng khi |
+|---|---|---|
+| `google_sheet` | Duplicate master template trên Drive | Cần bản share/edit chung |
+| `local_xlsx` | Copy `templates/template_testplan.xlsx` rồi ghi bằng `openpyxl` | User muốn file `.xlsx` trên máy, hoặc Drive chưa authorize / thiếu file id |
+
+Nguyên tắc chung cho cả 2 dạng:
+- File xlsx trong `templates/` là template nguồn của công ty (`TEM-ST02-01`), **read-only**, cấm sửa. Luôn làm việc trên **bản copy**.
 - Chỉ ghi vào các ô khai trong `references/template-cell-map.md`
 - **Cấm** đổi tên sheet, đổi tên cột, thêm/bớt/đổi thứ tự cột, xoá dòng, xoá formula
 - Sheet `Table of content` giữ nguyên 100%
-- Thiếu `master_template_file_id` **hoặc** `target_drive_folder_id` → ghi nhận `Cần xác nhận`, **vẫn xuất đủ output phụ**, dừng ở bước tạo Google Sheet và báo user cần cung cấp id nào
+
+Riêng `google_sheet`:
+- Template nguồn cần được import lên Google Drive **1 lần** để tạo Google Sheet master template
+- File mới đặt vào folder Drive của dự án theo `google.target_drive_folder_id`, tên theo `google.spreadsheet_name_pattern`
+- Thiếu `master_template_file_id` **hoặc** `target_drive_folder_id`, hoặc connector Drive chưa authorize → **KHÔNG dừng**: tự chuyển sang `local_xlsx`, báo user lý do, vẫn xuất đủ output phụ
+
+Riêng `local_xlsx`:
+- Dùng `scripts/xlsx_row_ops.py` cho mọi thao tác dòng — **cấm** gọi thẳng `ws.insert_rows()`
+- Bắt buộc chạy đủ 3 bước hậu xử lý trước khi save, nếu không bảng sẽ vỡ về mặt trình bày (xem `references/template-cell-map.md` §Bẫy của template):
+  1. `normalize_row_merges()` cho mọi bảng đã ghi
+  2. `ensure_narrative_merge()` cho mọi ô văn bản dài
+  3. `autofit_rows()` cho toàn bộ sheet trừ `Table of content`
+- Sau khi save, đối chiếu với template gốc: số sheet · số cột từng sheet · số data validation · `Table of content` nguyên vẹn
 
 ## 9. Phân tích nguồn phục vụ test planning
 
@@ -202,7 +218,9 @@ formula bắt buộc giữ ở sheet `07_Estimation & Schedule`.
 
 Quy tắc chống lệch mapping:
 - Trước khi ghi 1 bảng, **verify header thật** ở `header_row` khớp mô tả trong cell map. Lệch → dừng, báo user template đã đổi, cấm ghi mò.
-- Data vượt vùng có sẵn → insert row trước `data_to`, copy format từ dòng liền trên.
+- Data vượt vùng có sẵn → **insert row** trước `data_to`, copy format từ dòng liền trên. Với `local_xlsx` dùng `insert_rows_keep_merges()`; **cấm** nén dữ liệu lại cho vừa vùng có sẵn (vd gộp 30 tính năng thành 6 nhóm) — §5A.3 yêu cầu 2.3 liệt kê **toàn bộ** tính năng.
+- Chèn dòng xong thì **mọi anchor phía dưới đã dịch** → dò lại bằng `find_header_row()` theo header thật, cấm dùng lại số dòng hardcode trong cell map.
+- Chèn dòng theo thứ tự **từ dưới lên** trong cùng 1 sheet, để anchor của bảng phía trên không bị ảnh hưởng.
 - Data ít hơn vùng có sẵn → để trống dòng còn lại, cấm xoá dòng.
 
 ## 12. Ngôn ngữ output
@@ -279,12 +297,15 @@ Trích xuất đủ 12 nhóm thông tin ở §9. Ghi note vào `<evidence_root>/
 - 08: chốt danh mục testware bàn giao + ngôn ngữ + ngày
 - 09: điền mức độ theo công thức `Khả năng × Ảnh hưởng`, mitigation có chủ thể; rủi ro `Cao` phải thấy tác động ngược lại vào 3.1/3.2/07
 
-### Phase 7 — Tạo Google Sheet output
-- Duplicate từ `google.master_template_file_id` vào folder `google.target_drive_folder_id`
-- **Đúng 1 Sheet cho đúng 1 dự án** (§5A.1)
-- Đổi tên theo `spreadsheet_name_pattern`
+### Phase 7 — Tạo file output
+- `output.mode = google_sheet` → duplicate từ `google.master_template_file_id` vào folder `google.target_drive_folder_id`, đổi tên theo `spreadsheet_name_pattern`
+- `output.mode = local_xlsx` → copy `<skill_dir>/templates/template_testplan.xlsx` vào `<output_root>/<project_name>/`, đặt tên theo `spreadsheet_name_pattern` + `.xlsx`
+- **Đúng 1 file cho đúng 1 dự án** (§5A.1)
 - Ghi data theo `template-cell-map.md`; verify header trước mỗi bảng (§11)
+- Chèn dòng khi data vượt vùng có sẵn, dò lại anchor sau khi chèn (§11)
 - Bật wrap text cho mọi ô nội dung nhiều dòng
+- Với `local_xlsx`: chạy `normalize_row_merges` → `ensure_narrative_merge` → `autofit_rows` trước khi save (§8)
+- Ghi vào ô thuộc vùng merge phải qua `anchor()`; ghi effort vào sheet 07 xong phải gọi `sync_number_format()` (cell map §B4, §B6)
 - **Verify trước khi kết thúc Phase 7**:
   1. 12 sheet đủ, tên sheet không đổi
   2. Không sheet nào (trừ `Table of content`) còn trắng hoàn toàn
@@ -293,7 +314,18 @@ Trích xuất đủ 12 nhóm thông tin ở §9. Ghi note vào `<evidence_root>/
   5. Mọi test type tick `x` ở 3.2 đều đã fill nội dung ở `03_1`
   6. Mọi tiêu chí ở 6.1 · 6.2 đều có ngưỡng dạng ký hiệu
   7. Mọi rủi ro có `Mức độ` + `Tình trạng` + `Biện pháp`
-  Lệch bất kỳ mục nào → sửa, cấm xuất Sheet lỗi
+  8. Mọi dòng data của mọi bảng có **cùng mẫu merge** với dòng data đầu tiên của bảng đó
+  9. **Không dòng nào bị cắt chữ**: chiều cao dòng >= số dòng text sau khi wrap
+  10. So với template gốc: số sheet · số cột từng sheet · số data validation không đổi; `Table of content` nguyên vẹn
+  Lệch bất kỳ mục nào → sửa, cấm xuất file lỗi
+
+**Với `local_xlsx`, 10 mục trên KHÔNG được kiểm bằng mắt** — chạy:
+
+```bash
+python3 <skill_dir>/scripts/verify_testplan.py <file_da_ghi.xlsx> --template <skill_dir>/templates/template_testplan.xlsx
+```
+
+Exit code khác 0 → còn mục chưa đạt, **cấm bàn giao**. Script in rõ mục nào hỏng và ô nào sai.
 
 ### Phase 8 — Xuất output phụ
 - `testplan_generation_summary.md`
@@ -303,7 +335,9 @@ Trích xuất đủ 12 nhóm thông tin ở §9. Ghi note vào `<evidence_root>/
 ## 16. Output bắt buộc
 
 ### Output chính
-- 01 Google Spreadsheet Master Test Plan cho dự án, duplicate từ master template, nằm trong folder Drive của dự án
+- Đúng 01 file Master Test Plan cho dự án, tạo từ master template:
+  - `output.mode = google_sheet` → 1 Google Spreadsheet trong folder Drive của dự án
+  - `output.mode = local_xlsx` → 1 file `.xlsx` trong `<output_root>/<project_name>/`
 
 ### Output phụ
 - `<output_root>/<project_name>/testplan_generation_summary.md` — nguồn đã dùng · test level & test type đã chọn + căn cứ · test type để nguyên guidance · số liệu effort và nguồn · link Sheet
@@ -341,6 +375,9 @@ Format bắt buộc mỗi entry `open_points.md`:
 
 - Không bịa nghiệp vụ, không bịa ngưỡng, không bịa nhân sự · môi trường · ngày tháng
 - Không sửa template công ty: cấm đổi tên sheet/cột, thêm/bớt/đổi thứ tự cột, xoá dòng, xoá formula (§8)
+- **Data vượt vùng có sẵn → CHÈN DÒNG, cấm nén dữ liệu cho vừa template** (§11)
+- **`local_xlsx` phải chạy đủ `normalize_row_merges` + `ensure_narrative_merge` + `autofit_rows`** trước khi save, nếu không bảng vỡ trình bày (§8, `template-cell-map.md` §Bẫy của template)
+- **Kết thúc Phase 7 bắt buộc chạy `scripts/verify_testplan.py`**; exit code khác 0 thì cấm bàn giao — 10 mục verify là điều kiện fail được, không phải kiểm bằng mắt
 - **1 lần chạy = 1 Master Test Plan = 1 Google Sheet.** Master plan phủ toàn dự án và mọi test level — khác `gen-testcase` (1 module = 1 Sheet) (§5A.1)
 - **Thiếu `project_name` → DỪNG hỏi user xác nhận `project_name` · `version` · `release_scope`**, cấm tự suy từ manifest / tên folder / git remote (§5A.2)
 - **Verify header thật trước khi ghi mỗi bảng**; lệch cell map → dừng và báo, cấm ghi mò (§11)

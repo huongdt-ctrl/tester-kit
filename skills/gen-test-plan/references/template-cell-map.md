@@ -3,6 +3,68 @@
 Anchor chính xác của từng vùng ghi dữ liệu. Đo trực tiếp từ file
 `<skill_dir>/templates/template_testplan.xlsx`.
 
+## Bẫy của template — ĐỌC TRƯỚC KHI GHI
+
+6 khiếm khuyết **có sẵn trong file template công ty** (`md5 db3fca98`), đo trực tiếp bằng
+`openpyxl` ngày 2026-08-28. B1–B3 làm file xuất ra nhìn như bảng vỡ dù nội dung đúng;
+B4–B6 gây sai dữ liệu hoặc lỗi runtime.
+
+### B1. Template chỉ merge ~5 dòng đầu mỗi bảng
+
+Các dòng sau chỉ có border, **không có merge** → Excel hiện đường kẻ dọc **bên trong** ô
+`C:E` / `F:L` / `M:O`, nhìn lệch hẳn so với các dòng trên. Số dòng thực có merge:
+
+| Bảng | Vùng data | Số dòng CÓ merge |
+|---|---|---|
+| `02_Scope test` 2.6 | 63–75 | 5/13 |
+| `01_Introduction` 1.4 | 46–60 | 5/15 |
+| `05_Test Environment` 5.3 | 32–45 | 5/14 |
+| `06_Criteria` 6.2 | 18–30 | 5/13 |
+| `02_Scope test` 2.4 · 2.5 · `05` 5.1 · 5.2 | — | 5/7 |
+| `01_Introduction` 1.3 · `02` 2.2 · 2.3 · `03` 3.1 · `04` 4.1 · `06` 6.1 | — | thiếu đúng dòng cuối |
+| `08_Deliverables` | 7–15 | 0/9 — bảng này **vốn không merge**, đúng thiết kế |
+
+→ Ghi xong mỗi bảng phải gọi `normalize_row_merges(ws, first_data_row, n)` để nhân bản mẫu
+merge của dòng data đầu ra mọi dòng đã ghi.
+
+### B2. Mọi dòng để mặc định 12.75pt
+
+Bật wrap text mà không chỉnh chiều cao thì nội dung bị cắt (đo được 87 dòng ở lần chạy đầu).
+→ Gọi `autofit_rows(ws, rows)` cuối cùng. Ô nằm trong **merge dọc** phải chia đều phần chiều cao
+còn thiếu cho cả block, không đặt cho 1 dòng.
+
+### B3. Ô văn bản dài không nhất quán về merge ngang
+
+`B10:W11`, `B27:W27`, `B62:W62` (`02`), `B3:X17` (`03`), `B22:R22` (`04`) **có** merge, nhưng
+`B6`/`B10` (`01`), `B6` (`02`), `B6` (`04`), `B7`/`B19`/`B30` (`05`), `B5`/`B15` (`06`) thì **không**.
+Ô không merge + wrap text → chữ bị ép vào bề rộng 1 cột (~8 ký tự), một đoạn 600 ký tự thành ~80 dòng.
+
+→ Gọi `ensure_narrative_merge(ws, addr, end_col)` trước khi ghi. Cột kết thúc theo từng sheet:
+`01`→`R` · `02`→`W` · `03`→`X` · `04`→`R` · `05`→`V` · `06`→`Y` (lấy theo merge template đã dùng sẵn).
+
+### B4. Sheet 07 — cột G/H sai number format
+
+`G5`/`H5` là `0.00` nhưng `G6:H19` lại là `yyyy/mm/dd`. Ghi effort `2.58` vào `G6` thì Excel hiển thị
+`1900/01/02 13:55`. → Sau khi ghi, gọi `sync_number_format(ws, col, rows, ref_row=5)`.
+
+### B5. Sheet 07 — formula chỉ có ở dòng 5 và dòng 20
+
+Không phải mọi dòng 5–19. Khi verify formula `S`/`AB`/`AC`, chỉ check **dòng có data** + dòng `Total` 20.
+
+### B6. Sheet 07 — cột A và B merge theo block
+
+`A5:A19` (Release ghi **1 lần** ở `A5`) · `B5:B7` · `B8:B10` · `B11:B15` · `B16:B18`
+(Function cấp I theo block). Bố cục dòng data phải khớp block merge, không thì ghi vào `MergedCell`
+sẽ ném `AttributeError: read-only` → mọi ô trong vùng merge phải ghi qua `anchor(ws, addr)`.
+
+> **openpyxl 3.1.5**: `ws.insert_rows()` **không** dịch merged range, row height và data validation.
+> Phải dùng `scripts/xlsx_row_ops.py:insert_rows_keep_merges()`, cấm gọi thẳng.
+> Mọi ô nằm trong vùng merge phải ghi qua `anchor()`.
+>
+> Ghi xong **bắt buộc** chạy `scripts/verify_testplan.py` — 10 mục verify của Phase 7 đã được script hoá, exit code khác 0 là cấm bàn giao.
+
+---
+
 **Quy tắc chung khi ghi:**
 - `header_row` = dòng chứa tên cột. **Cấm sửa** dòng này.
 - `data_from` = dòng đầu tiên được ghi data.
