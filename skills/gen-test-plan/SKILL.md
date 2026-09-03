@@ -247,6 +247,8 @@ Quy tắc chống lệch mapping:
 
 ### 13.3. Thiếu thông tin
 - Ô bắt buộc mà thiếu thông tin → ghi đúng chuỗi `Cần xác nhận` + 1 dòng nêu thiếu gì.
+- **Ô bắt đầu bằng `Cần xác nhận` phải tô chữ MÀU ĐỎ** (`FFCC0000`) để người đọc thấy ngay điểm chưa chốt. Dùng `to_do_red()` trong `scripts/xlsx_row_ops.py`.
+- Chỉ tô ô **bắt đầu bằng** token. Ô chỉ nhắc lại cụm đó giữa câu văn mô tả (vd `mục 5.1 phải ghi Cần xác nhận cho số lượng`) là nội dung bình thường — **cấm tô đỏ**.
 - Đồng thời **bắt buộc** thêm 1 entry vào `open_points.md`.
 - Cấm ghi `N/A` / `—` / `TBD` / để trắng cho ô bắt buộc.
 
@@ -305,6 +307,7 @@ Trích xuất đủ 12 nhóm thông tin ở §9. Ghi note vào `<evidence_root>/
 - Chèn dòng khi data vượt vùng có sẵn, dò lại anchor sau khi chèn (§11)
 - Bật wrap text cho mọi ô nội dung nhiều dòng
 - Với `local_xlsx`: chạy `normalize_row_merges` → `ensure_narrative_merge` → `autofit_rows` trước khi save (§8)
+- Chạy `to_do_red()` để tô đỏ mọi ô bắt đầu bằng `Cần xác nhận` (§13.3)
 - Ghi vào ô thuộc vùng merge phải qua `anchor()`; ghi effort vào sheet 07 xong phải gọi `sync_number_format()` (cell map §B4, §B6)
 - **Verify trước khi kết thúc Phase 7**:
   1. 12 sheet đủ, tên sheet không đổi
@@ -377,6 +380,7 @@ Format bắt buộc mỗi entry `open_points.md`:
 - Không sửa template công ty: cấm đổi tên sheet/cột, thêm/bớt/đổi thứ tự cột, xoá dòng, xoá formula (§8)
 - **Data vượt vùng có sẵn → CHÈN DÒNG, cấm nén dữ liệu cho vừa template** (§11)
 - **`local_xlsx` phải chạy đủ `normalize_row_merges` + `ensure_narrative_merge` + `autofit_rows`** trước khi save, nếu không bảng vỡ trình bày (§8, `template-cell-map.md` §Bẫy của template)
+- **Ô bắt đầu bằng `Cần xác nhận` phải tô chữ đỏ**; ô nhắc lại cụm đó giữa câu văn thì không (§13.3)
 - **Kết thúc Phase 7 bắt buộc chạy `scripts/verify_testplan.py`**; exit code khác 0 thì cấm bàn giao — 10 mục verify là điều kiện fail được, không phải kiểm bằng mắt
 - **1 lần chạy = 1 Master Test Plan = 1 Google Sheet.** Master plan phủ toàn dự án và mọi test level — khác `gen-testcase` (1 module = 1 Sheet) (§5A.1)
 - **Thiếu `project_name` → DỪNG hỏi user xác nhận `project_name` · `version` · `release_scope`**, cấm tự suy từ manifest / tên folder / git remote (§5A.2)

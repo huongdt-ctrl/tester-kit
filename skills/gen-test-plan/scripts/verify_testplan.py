@@ -15,7 +15,7 @@ import openpyxl
 from openpyxl.utils.cell import range_boundaries
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from xlsx_row_ops import _needed_lines, LINE_PT  # noqa: E402
+from xlsx_row_ops import _needed_lines, LINE_PT, DO, la_diem_chua_chot  # noqa: E402
 
 SHEETS = ["Cover", "Table of content", "01_Introduction", "02_Scope test",
           "03_Test ApproachStrategy", "03_1_Test ApproachStr", "04_Resources",
@@ -192,6 +192,21 @@ def check_token_cam(wb, tpl):
     return not hits, f"token cam: {hits[:8]}"
 
 
+def check_can_xac_nhan_mau_do(wb, _):
+    """11. Moi diem chua chot phai to chu mau do (xem xlsx_row_ops.la_diem_chua_chot)."""
+    xau = []
+    for n in wb.sheetnames:
+        ws = wb[n]
+        for row in ws.iter_rows():
+            for c in row:
+                if not la_diem_chua_chot(c.value):
+                    continue
+                mau = getattr(c.font.color, "rgb", None) if c.font and c.font.color else None
+                if mau != DO:
+                    xau.append(f"{n}!{c.coordinate}({mau})")
+    return not xau, f"{len(xau)} o chua to do: {xau[:8]}"
+
+
 def check_khop_template(wb, tpl):
     """10. So sanh voi template goc: so cot, data validation, Table of content."""
     if tpl is None:
@@ -213,7 +228,7 @@ def check_khop_template(wb, tpl):
 
 CHECKS = [check_sheets, check_khong_sheet_trang, check_formula_07, check_phuong_phap_test,
           check_test_type_da_fill, check_nguong_criteria, check_rui_ro, check_merge_dong_bo, check_khong_cat_chu,
-          check_token_cam, check_khop_template]
+          check_token_cam, check_can_xac_nhan_mau_do, check_khop_template]
 
 
 def run(path, template=None):

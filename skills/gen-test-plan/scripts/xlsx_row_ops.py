@@ -5,7 +5,9 @@ openpyxl 3.1.5 `insert_rows` KHONG dich merged range, data validation va row hei
 => phai tu xu ly, neu khong bang bi vo merge.
 """
 import math
+import re
 from copy import copy
+from openpyxl.styles import Color
 from openpyxl.utils.cell import range_boundaries, get_column_letter
 
 DEFAULT_COL_WIDTH = 8.43
@@ -217,3 +219,49 @@ def sync_number_format(ws, col, rows, ref_row):
             cell.number_format = ref
             changed += 1
     return changed
+
+
+TOKEN_CHUA_CHOT = "Cần xác nhận"
+DO = "FFCC0000"
+
+
+def la_diem_chua_chot(v, token=TOKEN_CHUA_CHOT):
+    """True khi o la DIEM CHUA CHOT, False khi chi nhac lai cum do trong van ban.
+
+    To do khi:
+      1. O bat dau bang token          -> "Can xac nhan - chua co quyen truy cap"
+      2. Token la gia tri sau dau ':'  -> "Nguoi co tham quyen: Can xac nhan"
+    KHONG to khi token nam giua cau mo ta:
+      "muc 5.1 phai ghi Can xac nhan cho so luong, version..."
+      "muc 5 hien con nhieu diem Can xac nhan."   (khong co dau ':' truoc token)
+    """
+    if not isinstance(v, str):
+        return False
+    v = v.strip()
+    if v.startswith(token):
+        return True
+    return bool(re.search(r":\s*" + re.escape(token) + r"\s*\.?\s*$", v))
+
+
+def to_do_red(ws, token=TOKEN_CHUA_CHOT, color=DO, bat_ky=False):
+    """To do chu cho o la diem chua chot. Giu nguyen font khac, chi doi mau.
+
+    `bat_ky=False` (mac dinh, dung cho /gen-test-plan): chi to o la DIEM CHUA CHOT
+    theo `la_diem_chua_chot` -- vi o do van mo ta duoc phep nhac lai cum tu.
+    `bat_ky=True` (dung cho /gen-testcase): to MOI lan xuat hien, vi trong noi dung
+    test case khong co van mo ta -- token xuat hien o dau cung la loi.
+    """
+    from copy import copy
+    khop = (lambda v: isinstance(v, str) and token in v) if bat_ky \
+        else (lambda v: la_diem_chua_chot(v, token))
+    da_to = 0
+    for row in ws.iter_rows():
+        for cell in row:
+            if not khop(cell.value):
+                continue
+            o = anchor(ws, cell.coordinate)
+            f = copy(o.font)
+            f.color = Color(rgb=color)
+            o.font = f
+            da_to += 1
+    return da_to
