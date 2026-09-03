@@ -7,6 +7,7 @@ project:
   timezone: "Asia/Ho_Chi_Minh"
 
 output:
+  mode: "local_xlsx"                    # local_xlsx | google_sheet (xem SKILL.md §8)
   output_root: "testcases"
   evidence_root: "evidence_testcase"
   summary_file_name: "testcase_generation_summary.md"

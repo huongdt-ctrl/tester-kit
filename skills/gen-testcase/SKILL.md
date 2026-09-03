@@ -1,6 +1,6 @@
 ---
 name: gen-testcase
-description: "[personal] Sinh manual test cases cho từng chức năng và xuất ra 1 Google Sheet riêng bằng cách duplicate từ master template được import từ file template_testcase.xlsx đi kèm skill."
+description: "[personal] Sinh manual test cases cho từng chức năng và xuất ra 1 file riêng cho mỗi chức năng đặt trong thư mục test case của chức năng đó — mặc định .xlsx local (clone từ template_testcase.xlsx đi kèm skill, ghi bằng openpyxl), hoặc Google Sheet nếu cấu hình."
 ---
 
 # Skill: gen-testcase
@@ -167,8 +167,11 @@ gọi từ project khác.
 
 Nguyên tắc vận hành:
 - File Excel này là template nguồn của công ty
-- Template nguồn cần được import lên Google Drive 1 lần để tạo Google Sheet master template
-- Mỗi lần sinh test case cho một chức năng, skill phải tạo 1 file Google Sheet mới bằng cách duplicate từ Google Sheet master template
+- Skill hỗ trợ **2 dạng output**, chọn theo `output.mode` trong profile (mặc định `local_xlsx`):
+  - `local_xlsx` — copy `templates/template_testcase.xlsx` rồi ghi bằng `scripts/write_testcase_xlsx.py`. **Khuyến nghị**: không cần Drive auth, không vỡ format.
+  - `google_sheet` — import template lên Drive 1 lần tạo master template, mỗi chức năng duplicate ra 1 Sheet mới.
+- File output đặt tại `<output_root>/<module_name>/` cùng chỗ với output phụ của chính module đó
+- Thiếu `google_master_template_file_id` hoặc chưa authorize Drive → **tự chuyển sang `local_xlsx`**, không dừng
 - Skill chỉ được ghi dữ liệu vào đúng worksheet cấu hình trong manifest
 - Skill không được tự ý đổi tên cột, thêm cột hoặc đổi thứ tự cột nếu không có yêu cầu rõ ràng
 - Skill phải preserve cấu trúc template thực tế nhiều nhất có thể
@@ -494,8 +497,9 @@ Map từng test case về:
 - Source ID
 - Source reference
 
-### Phase 7 — Tạo Google Sheet output
-- Duplicate từ `google_master_template_file_id`
+### Phase 7 — Tạo file output
+- `local_xlsx` (mặc định): `python3 <skill_dir>/scripts/write_testcase_xlsx.py <csv> <out.xlsx> --template <skill_dir>/templates/template_testcase.xlsx --sheet-name <module_name>`
+- `google_sheet`: duplicate từ `google_master_template_file_id`
 - **Đúng 1 Sheet cho đúng 1 module** — cấm tạo nhiều Sheet hoặc gộp module (§5A.1)
 - Đổi tên file theo naming convention
 - Ghi data test case vào worksheet đúng cấu hình
@@ -503,7 +507,11 @@ Map từng test case về:
 - **Ghi ký tự xuống dòng thật trong ô** cho 4 cột `Preconditions` / `Steps` / `Test data` / `Expected Result` (§14.0) — dùng `\n` trong giá trị cell, không tách thành nhiều row
 - **Bật wrap text** cho 4 cột này để nội dung nhiều dòng hiển thị đầy đủ
 - Không thêm / bớt / đổi thứ tự cột khi áp dụng format đa dòng
-- **Verify trước khi kết thúc Phase 7**: với mỗi row, số dòng `Expected Result` khớp số dòng `Steps`; lệch → sửa lại test case, không xuất Sheet lỗi
+- **Verify trước khi kết thúc Phase 7**: mỗi bước trong `Steps` phải có `Expected Result` tương ứng. **KHÔNG** so sánh số dòng — 1 bước được phép có nhiều điểm verify, viết phân cấp `2.1` / `2.2` / `2.3` dưới bước `2`. Chỉ đòi tập số hiệu bước phải trùng nhau.
+- **Bắt buộc chạy**: `python3 <skill_dir>/scripts/verify_testcase_xlsx.py <out.xlsx> --template <skill_dir>/templates/template_testcase.xlsx` — exit code khác 0 thì **cấm bàn giao**.
+- **`Cần xác nhận` trong `Expected result` → verify FAIL, cấm bàn giao** (§10.3): test case không có kết quả mong đợi chốt thì không chạy được.
+- Ô nào lỡ lọt `Cần xác nhận` thì `write_testcase_xlsx.py` tô **chữ đỏ** (`FFCC0000`) để người review thấy ngay — đồng bộ cách đánh dấu với `/gen-test-plan`.
+- **Xoá sạch cột kết quả thi hành `K`..`T`**: template có sẵn dữ liệu mẫu `Passed` / `HuongDT` / `2023-07-07`. Không xoá là bàn giao test case kèm **kết quả pass giả**.
 
 ### Phase 8 — Xuất output phụ
 - Xuất `testcase_generation_summary.md`
@@ -582,9 +590,10 @@ Nếu requirement thiếu:
 ## 19. Output bắt buộc
 
 ### Output chính
-- 01 Google Spreadsheet riêng cho mỗi chức năng
-- File được tạo bằng cách duplicate từ Google Sheet master template
-- File chứa 01 worksheet chính để nhập manual test cases
+- Đúng 01 file test case riêng cho mỗi chức năng, đặt tại `<output_root>/<module_name>/`
+  - `local_xlsx` → `<output_root>/<module_name>/{project_code}_{module_name}_manual_testcases.xlsx`
+  - `google_sheet` → 01 Google Spreadsheet duplicate từ master template
+- File giữ nguyên 7 sheet của template; sheet `Function {Name}` được đổi tên thành tên chức năng
 
 ### Output phụ
 - `<output_root>/<module_name>/testcase_generation_summary.md`
@@ -609,6 +618,12 @@ Skill hoàn tất khi:
 - Không có nội dung bịa
 
 ## 21. Rules
+
+- **`Cần xác nhận` trong `Expected result` → verify FAIL**; ô lọt token được tô chữ đỏ (§10.3)
+
+- **Mặc định xuất `.xlsx` local**; thiếu Drive auth thì tự fallback, cấm dừng (§8)
+- **Xoá sạch cột `K`..`T`** trước khi bàn giao — template có sẵn kết quả `Passed`/`HuongDT` (Phase 7)
+- **Kết thúc Phase 7 bắt buộc chạy `scripts/verify_testcase_xlsx.py`**, exit != 0 thì cấm bàn giao
 
 - Không bịa nghiệp vụ
 - Không tạo test case trùng ý nghĩa
