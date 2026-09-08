@@ -498,7 +498,8 @@ Map từng test case về:
 - Source reference
 
 ### Phase 7 — Tạo file output
-- `local_xlsx` (mặc định): `python3 <skill_dir>/scripts/write_testcase_xlsx.py <csv> <out.xlsx> --template <skill_dir>/templates/template_testcase.xlsx --sheet-name <module_name>`
+- `local_xlsx` (mặc định): `python3 <skill_dir>/scripts/write_testcase_xlsx.py <csv> <out.xlsx> --template <skill_dir>/templates/template_testcase.xlsx --sheet-name <module_name> --meta <meta.json>`
+- **Bắt buộc truyền `--meta`** để điền `Cover` + `Table of content` + header `B2..B6` (§7A). Thiếu `--meta` → 2 sheet đó đầy `Cần xác nhận`, verify vẫn pass nhưng file bàn giao trông như chưa làm.
 - `google_sheet`: duplicate từ `google_master_template_file_id`
 - **Đúng 1 Sheet cho đúng 1 module** — cấm tạo nhiều Sheet hoặc gộp module (§5A.1)
 - Đổi tên file theo naming convention
@@ -511,7 +512,41 @@ Map từng test case về:
 - **Bắt buộc chạy**: `python3 <skill_dir>/scripts/verify_testcase_xlsx.py <out.xlsx> --template <skill_dir>/templates/template_testcase.xlsx` — exit code khác 0 thì **cấm bàn giao**.
 - **`Cần xác nhận` trong `Expected result` → verify FAIL, cấm bàn giao** (§10.3): test case không có kết quả mong đợi chốt thì không chạy được.
 - Ô nào lỡ lọt `Cần xác nhận` thì `write_testcase_xlsx.py` tô **chữ đỏ** (`FFCC0000`) để người review thấy ngay — đồng bộ cách đánh dấu với `/gen-test-plan`.
+- **Check 12 + 13**: `Cover` / `Table of content` / header `B2..B6` của sheet test case không còn placeholder `<...>` `{...}`, và ô `Cần xác nhận` ở các vùng đó phải tô đỏ (§7A).
 - **Xoá sạch cột kết quả thi hành `K`..`T`**: template có sẵn dữ liệu mẫu `Passed` / `HuongDT` / `2023-07-07`. Không xoá là bàn giao test case kèm **kết quả pass giả**.
+
+### Phase 7A — Điền `Cover` + `Table of content` + header sheet test case
+
+`write_testcase_xlsx.py` gọi `write_meta_cells.py` để điền 14 ô của `Cover`, 5 dòng của
+`Table of content` và khối header `B2..B6` của chính sheet test case (Function Name /
+Screen Name / Creator / Created date / Reference). Dữ liệu lấy từ JSON truyền qua `--meta`:
+
+```json
+{
+  "project_name": "Gettii Lite (GTL)",
+  "creator": "HuongDT",
+  "user_story": "GTL-1234",
+  "screen_name": "マイチケット",
+  "purpose": "This document is used to ...",
+  "test_environment": "macOS 14, Chrome 127, PostgreSQL 15",
+  "reviewer": "QuyenNT",
+  "review_date": "",
+  "reference": "外部設計書 v1.5",
+  "module_description": "Short description of the business objective"
+}
+```
+
+- Ghi `meta.json` cùng thư mục với `testcase_draft.csv` của module.
+- `screen_name` **giữ nguyên văn** tên màn hình hiển thị trên UI (§13), không dịch.
+- Suy ra được thì **không cần** khai: `module_name` (= tên sheet test case), `version` (`1.0`),
+  `create_date` (hôm nay), `change_description` (`Create TC for <module_name>`).
+- Khoá thiếu / để rỗng → ghi `Cần xác nhận` + **tô chữ đỏ**, KHÔNG để trống và KHÔNG
+  giữ placeholder `<...>` của template.
+- Nội dung 2 sheet này viết **tiếng Anh**, khớp ngôn ngữ template.
+
+**3 sheet CÓ CHỦ ĐÍCH để nguyên placeholder** — `Test report`, `Test data`, `Evidences`:
+kết quả thi hành, dữ liệu test thật và ảnh evidence là việc của tester lúc execute
+(`/execute-testcase`). AI điền vào = dữ liệu giả. Verify **không** soi 3 sheet này.
 
 ### Phase 8 — Xuất output phụ
 - Xuất `testcase_generation_summary.md`
@@ -594,6 +629,7 @@ Nếu requirement thiếu:
   - `local_xlsx` → `<output_root>/<module_name>/{project_code}_{module_name}_manual_testcases.xlsx`
   - `google_sheet` → 01 Google Spreadsheet duplicate từ master template
 - File giữ nguyên 7 sheet của template; sheet `Function {Name}` được đổi tên thành tên chức năng
+- 3 sheet được điền: `Cover`, `Table of content`, `<module_name>` (cả header `B2..B6` lẫn test case). 3 sheet `Test report` / `Test data` / `Evidences` để tester điền lúc execute; `Scope test` điền tay nếu cần (§7A)
 
 ### Output phụ
 - `<output_root>/<module_name>/testcase_generation_summary.md`
@@ -624,6 +660,7 @@ Skill hoàn tất khi:
 - **Mặc định xuất `.xlsx` local**; thiếu Drive auth thì tự fallback, cấm dừng (§8)
 - **Xoá sạch cột `K`..`T`** trước khi bàn giao — template có sẵn kết quả `Passed`/`HuongDT` (Phase 7)
 - **Kết thúc Phase 7 bắt buộc chạy `scripts/verify_testcase_xlsx.py`**, exit != 0 thì cấm bàn giao
+- **Bắt buộc truyền `--meta` cho `write_testcase_xlsx.py`** để điền `Cover` + `Table of content` + header `B2..B6`; cấm bàn giao file còn placeholder `<...>` ở các vùng đó (§7A)
 
 - Không bịa nghiệp vụ
 - Không tạo test case trùng ý nghĩa

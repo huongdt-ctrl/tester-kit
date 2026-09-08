@@ -1,12 +1,14 @@
 """Ghi test case tu CSV vao ban copy cua template_testcase.xlsx.
 
-Dung: python3 write_testcase_xlsx.py <csv> <out.xlsx> --template <tpl> [--sheet-name <ten>]
+Dung: python3 write_testcase_xlsx.py <csv> <out.xlsx> --template <tpl>
+           [--sheet-name <ten>] [--meta <meta.json>]
 
 Vi sao co script nay: truoc day skill chi tao Google Sheet, gap loi vo format va
 phai co Drive auth, nen test case ket lai o CSV. Script ghi thang ra .xlsx local.
 """
 import argparse
 import csv
+import json
 import re
 import shutil
 import sys
@@ -17,6 +19,7 @@ from openpyxl.styles import Alignment
 from openpyxl.utils.cell import range_boundaries
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from write_meta_cells import ghi_cover_va_toc, ghi_header_test_case  # noqa: E402
 from xlsx_row_ops import autofit_rows, insert_rows_keep_merges, to_do_red  # noqa: E402
 
 SHEET_MAU = "Function {Name}"
@@ -87,7 +90,7 @@ def gom_nhom_cot_phan_loai(ws, tu, den):
     return da_merge
 
 
-def ghi(csv_path, out_path, template, sheet_name=None):
+def ghi(csv_path, out_path, template, sheet_name=None, meta=None):
     rows = doc_csv(csv_path)
     shutil.copyfile(template, out_path)
     wb = openpyxl.load_workbook(out_path)
@@ -99,6 +102,10 @@ def ghi(csv_path, out_path, template, sheet_name=None):
 
     ws.title = _ten_sheet_hop_le(sheet_name or Path(csv_path).parent.name)
     xoa_du_lieu_mau(ws, DATA_FROM, DATA_TO)
+
+    # Cover + ToC: phai ghi SAU khi doi ten sheet, vi ToC B7 tro ten sheet test case.
+    meta_day_du, chua_chot = ghi_cover_va_toc(wb, ws.title, meta)
+    chua_chot += ghi_header_test_case(ws, meta_day_du)   # B2..B6, to do o buoc duoi
 
     can = len(rows)
     co = DATA_TO - DATA_FROM + 1
@@ -125,13 +132,18 @@ def ghi(csv_path, out_path, template, sheet_name=None):
     # Neu lot vao thi to do de nguoi review thay ngay; verify se chan viec ban giao.
     to_do_red(ws, bat_ky=True)   # trong test case, moi lan xuat hien deu la loi
     wb.save(out_path)
-    return len(rows), nhom, ws.title
+    return len(rows), nhom, ws.title, chua_chot
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("csv"); ap.add_argument("out")
     ap.add_argument("--template", required=True); ap.add_argument("--sheet-name")
+    ap.add_argument("--meta", help="JSON meta cho sheet Cover (project_name, creator, "
+                                   "user_story, purpose, test_environment, reviewer...)")
     a = ap.parse_args()
-    n, nhom, ten = ghi(a.csv, a.out, a.template, a.sheet_name)
-    print(f"OK — {n} test case -> sheet {ten!r} · {nhom} nhom phan loai da merge\n   {a.out}")
+    meta = json.loads(Path(a.meta).read_text(encoding="utf-8")) if a.meta else None
+    n, nhom, ten, cc = ghi(a.csv, a.out, a.template, a.sheet_name, meta)
+    print(f"OK — {n} test case -> sheet {ten!r} · {nhom} nhom phan loai da merge")
+    print(f"   Cover + ToC + header B2..B6 da ghi · {cc} o 'Cần xác nhận' to do can nguoi dien")
+    print(f"   {a.out}")

@@ -2,7 +2,7 @@
 # Cai bo skill QA vao may + dung khung thu muc cho mot du an.
 #
 # Chay 2 viec tach bach:
-#   1. Dang ky 7 skill vao ~/.claude/skills/  -> go /gen-testcase la dung duoc
+#   1. Dang ky 8 skill vao ~/.claude/skills/  -> go /gen-testcase la dung duoc
 #   2. Dung configs/ inputs/ trong du an dich -> skill co cho doc cau hinh
 #
 # KHONG BAO GIO ghi de file cau hinh da co: du an dang chay do dang ma bi
@@ -14,7 +14,7 @@ SKILLS_HOME="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 TARGET="${1:-}"
 MODE="${QA_PACK_INSTALL_MODE:-symlink}"   # symlink | copy
 
-SKILLS="create-test-schedule estimate-test execute-testcase gen-requirement gen-testcase gen-test-plan log-bug"
+SKILLS="bug-analyst create-test-schedule estimate-test execute-testcase gen-requirement gen-testcase gen-test-plan log-bug"
 
 say()  { printf "  %s\n" "$*"; }
 head_() { printf "\n== %s ==\n" "$*"; }

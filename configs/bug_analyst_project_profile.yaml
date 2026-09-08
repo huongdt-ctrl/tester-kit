@@ -1,0 +1,78 @@
+profile_version: "1.0"
+
+# Chuan chung cua project cho viec phan tich bug -- muc uu tien THAP NHAT.
+# manifest va CLI param se ghi de cac key trung ten.
+
+project:
+  project_code: "PRJ"
+  project_name: "Sample Project"
+  timezone: "Asia/Ho_Chi_Minh"
+
+tracker:
+  # Doi tracker = doi DUNG dong nay. Ho tro: gitlab | jira | redmine.
+  system: "gitlab"
+
+  # --- GitLab ---
+  base_url: "https://gitlab.example.com"
+  project_path: "group/subgroup/project"
+  token: "env:GITLAB_TOKEN"
+  bug_label: "bug"              # bug = issue co label nay
+
+  # --- Jira (bo comment khi doi sang jira) ---
+  # base_url: "https://your-domain.atlassian.net"
+  # project_key: "PRJ"
+  # email: "qa@example.com"
+  # api_token: "env:JIRA_API_TOKEN"
+  # bug_issue_type: "Bug"       # bug = issue co issuetype nay
+
+  # --- Redmine (bo comment khi doi sang redmine) ---
+  # base_url: "https://redmine.example.com"
+  # project_id: "project-identifier"
+  # api_key: "env:REDMINE_API_KEY"
+  # bug_tracker_name: "Bug"     # bug = issue co tracker nay
+  # bug_tracker_id: 1           # khai thang id thi khoi phai tra ten
+
+  timeout_seconds: 30
+  page_size: 100
+
+run:
+  phase: ""                     # vd "Sprint 3" -- vao ten file + cot Milestone
+  date_from: ""                 # YYYY-MM-DD
+  date_to: ""                   # YYYY-MM-DD
+
+mapping:
+  # Bug khong parse duoc ten man hinh tu title thi xep vao day.
+  default_screen: "All screen"
+  # Ten priority cua tracker -> 5 gia tri dropdown cua template.
+  # (Emergent / Urgent / High / Normal / Low)
+  priority_map:
+    Immediate: "Emergent"
+    Highest: "Emergent"
+    Critical: "Urgent"
+    Urgent: "Urgent"
+    High: "High"
+    Normal: "Normal"
+    Medium: "Normal"
+    Low: "Low"
+    Lowest: "Low"
+
+paths:
+  # Bo trong = dung template di kem skill (skills/bug-analyst/templates/template_bug_analysis.xlsx).
+  # Chi khai khi du an dung ban template rieng.
+  template: ""
+  output_root: "bug_analysis"
+
+# --- THAM CHIEU cho agent doc. Code KHONG doc block nay ---
+analysis_policy:
+  # Ba o duoi day KHONG suy ra duoc tu tracker -> agent phai phan tich va dien.
+  agent_must_fill: ["severity", "cause", "root_cause"]
+  # Bang VI cua template chi liet ke 17/22 cause -> skill tu noi len du 22 dong
+  # (bao o "catalogue_rows_added"), nen chon muc nao cung duoc dem.
+  # "uncounted" gio chi bao gia tri khong nam trong ca danh muc = go tay sai ma.
+  # Van uu tien muc CU THE; "Other" chi dung khi that su khong co muc nao khop.
+  prefer_specific_category: true
+  notes:
+    - "Severity do tac dong len nguoi dung; Priority do thu tu can fix. Khong copy o nay sang o kia."
+    - "Cause catelogies = sai o KHAU nao (requirement / design / code / test / deploy)."
+    - "Root cause = TAI SAO khau do sai (process / skill / discipline)."
+    - "Sheet 'Define' trong file giai thich tung ma bang tieng Viet -- doc truoc khi phan loai."

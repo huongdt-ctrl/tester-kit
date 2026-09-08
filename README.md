@@ -1,6 +1,6 @@
 # tester-kit
 
-Bộ 7 skill Claude Code phủ trọn vòng đời QA — từ đọc tài liệu nghiệp vụ tới log bug lên tracker.
+Bộ 8 skill Claude Code phủ trọn vòng đời QA — từ đọc tài liệu nghiệp vụ tới log bug lên tracker.
 Đóng gói từ một dự án thật để dùng lại cho mọi dự án khác.
 
 ## Cài
@@ -11,7 +11,7 @@ cd tester-kit
 ./install.sh /duong/dan/toi/du-an-cua-ban
 ```
 
-Xong 2 việc: đăng ký 7 skill vào `~/.claude/skills/`, và dựng `configs/` + `inputs/` + `templates/` trong dự án đích.
+Xong 2 việc: đăng ký 8 skill vào `~/.claude/skills/`, và dựng `configs/` + `inputs/` + `templates/` trong dự án đích.
 
 Chạy lại lúc nào cũng được — **file cấu hình đã có sẽ không bị ghi đè**.
 
@@ -20,7 +20,7 @@ Chạy lại lúc nào cũng được — **file cấu hình đã có sẽ khôn
 QA_PACK_INSTALL_MODE=copy ./install.sh …  # copy thay vì symlink (phát cho người khác)
 ```
 
-## 7 skill
+## 8 skill
 
 | Lệnh | Làm gì | Output |
 |---|---|---|
@@ -31,18 +31,19 @@ QA_PACK_INSTALL_MODE=copy ./install.sh …  # copy thay vì symlink (phát cho n
 | `/create-test-schedule` | Lịch test cho tester, theo dõi actual vs estimate | `.xlsx` |
 | `/execute-testcase` | Chạy test trên môi trường, ghi kết quả vào chính file test case | cập nhật in-place |
 | `/log-bug` | Log bug lên **Redmine / GitLab / Jira** theo template QA | issue trên tracker |
+| `/bug-analyst` | Gom bug một giai đoạn từ tracker → file phân tích bug (7 bảng + 5 chart) | `.xlsx` theo giai đoạn |
 
 Thứ tự thường dùng:
 
 ```
 gen-requirement → gen-testcase → estimate-test → create-test-schedule
                                       ↓
-                            execute-testcase → log-bug
+                            execute-testcase → log-bug → bug-analyst
 ```
 
 ## Sau khi cài, phải điền 3 thứ
 
-**1. `configs/module_registry.yaml`** — sổ cái nối cả 7 skill. Liệt kê module của dự án;
+**1. `configs/module_registry.yaml`** — sổ cái nối cả 8 skill. Liệt kê module của dự án;
 mỗi module đi qua requirement → test case → estimate, trạng thái ghi ngay tại đây.
 Quy ước hạt: **1 màn hình = 1 module**.
 
@@ -64,7 +65,7 @@ Trong YAML chỉ ghi tên biến: `token: "env:GITLAB_TOKEN"`. Ghi thẳng giá 
 `business_rules.md` · `functional_requirements.md` · `validation_rules.md` · `traceability_matrix.md` ·
 `impact_scope.md` · `source_inventory.md` · `assumptions_and_open_points.md` · `excel_testcase_schema.yaml`
 
-Dùng placeholder `<module_name>`, `<project_code>` — skill tự điền. **Đừng xoá**: 4/7 skill tham
+Dùng placeholder `<module_name>`, `<project_code>` — skill tự điền. **Đừng xoá**: 4/8 skill tham
 chiếu trực tiếp theo tên file.
 
 Template `.xlsx` nằm trong từng skill (`skills/<ten>/templates/`), không ở đây.
@@ -107,6 +108,7 @@ Test riêng từng skill:
 ```bash
 cd skills/log-bug/tests           && python3 -m pytest . -q   # 139 test
 cd skills/execute-testcase/tests  && python3 -m pytest . -q   # 63 test
+cd skills/bug-analyst/tests       && python3 -m pytest . -q
 ```
 
 Chạy được offline, không cần tracker thật (test regression tự dựng stub HTTP rồi tự tắt).

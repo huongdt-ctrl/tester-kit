@@ -10,6 +10,7 @@ from pathlib import Path
 import openpyxl
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from write_meta_cells import SHEET_COVER, SHEET_TOC, TC_HEADER  # noqa: E402
 from xlsx_row_ops import _needed_lines, LINE_PT, DO, TOKEN_CHUA_CHOT  # noqa: E402
 
 HEADER_ROW, DATA_FROM = 10, 12
@@ -19,6 +20,8 @@ HEADERS = {"A": "Classification", "D": "Test subject", "E": "Priority", "F": "Te
 EXEC_COLS = [chr(ord("K") + i) for i in range(10)]
 BAT_BUOC = ["D", "E", "F", "H", "J"]          # Pre-condition / Test data duoc phep rong
 CAM = {"N/A", "TBD", "-", "—"}
+PLACEHOLDER = re.compile(r"<[^>]+>|\{[^}]+\}")   # `<Project Name>`, `Function {Name}`
+SHEET_PHAI_DIEN = [SHEET_COVER, SHEET_TOC]         # Test report/data/Evidences: tester dien
 
 
 def _sheet_tc(wb):
@@ -139,6 +142,46 @@ def check_chua_chot_da_to_do(ws, n, tpl):
     return not xau, f"{len(xau)} o chua to do: {xau[:8]}"
 
 
+def check_cover_toc_da_dien(ws, n, tpl):
+    """12. Cover / ToC / header sheet test case khong con placeholder template.
+
+    3 sheet Test report / Test data / Evidences CO CHU DINH de nguyen cho tester
+    dien luc execute, nen khong soi -- xem write_meta_cells.py.
+    """
+    wb = ws.parent
+    xau = [f"{ws.title}!{o}={ws[o].value!r}" for o in TC_HEADER
+           if isinstance(ws[o].value, str) and PLACEHOLDER.search(ws[o].value)]
+    for ten in SHEET_PHAI_DIEN:
+        if ten not in wb.sheetnames:
+            xau.append(f"thieu sheet {ten!r}")
+            continue
+        for row in wb[ten].iter_rows():
+            for c in row:
+                if isinstance(c.value, str) and PLACEHOLDER.search(c.value):
+                    xau.append(f"{ten}!{c.coordinate}={c.value[:30]!r}")
+    return not xau, f"{len(xau)} o con placeholder: {xau[:8]}"
+
+
+def check_cover_toc_chua_chot_da_to_do(ws, n, tpl):
+    """13. O 'Can xac nhan' o Cover/ToC/header phai to chu do."""
+    wb = ws.parent
+    xau = [f"{ws.title}!{o}" for o in TC_HEADER
+           if TOKEN_CHUA_CHOT in str(ws[o].value or "")
+           and (getattr(ws[o].font.color, "rgb", None) if ws[o].font and ws[o].font.color
+                else None) != DO]
+    for ten in SHEET_PHAI_DIEN:
+        if ten not in wb.sheetnames:
+            continue
+        for row in wb[ten].iter_rows():
+            for c in row:
+                if TOKEN_CHUA_CHOT not in str(c.value or ""):
+                    continue
+                mau = getattr(c.font.color, "rgb", None) if c.font and c.font.color else None
+                if mau != DO:
+                    xau.append(f"{ten}!{c.coordinate}")
+    return not xau, f"{len(xau)} o chua to do: {xau[:8]}"
+
+
 def check_khop_template(ws, n, tpl):
     """9. So sheet va so cot khong doi so voi template."""
     if tpl is None:
@@ -154,7 +197,8 @@ def check_khop_template(ws, n, tpl):
 CHECKS = [check_header, check_co_testcase, check_tcid_duy_nhat, check_cot_bat_buoc,
           check_khong_ket_qua_gia, check_steps_khop_expected, check_khong_cat_chu,
           check_token_cam, check_expected_khong_chua_chot,
-          check_chua_chot_da_to_do, check_khop_template]
+          check_chua_chot_da_to_do, check_cover_toc_da_dien,
+          check_cover_toc_chua_chot_da_to_do, check_khop_template]
 
 
 def run(path, template=None):

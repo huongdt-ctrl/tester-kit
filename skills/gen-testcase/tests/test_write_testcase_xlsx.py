@@ -55,7 +55,7 @@ def test_ghi_chen_them_dong_khi_vuot_9_dong_co_san(tmp_path):
     out = tmp_path / "o.xlsx"
 
     # Act
-    n, _, _ = ghi(src, out, TEMPLATE, sheet_name="m")
+    n, _, _, _ = ghi(src, out, TEMPLATE, sheet_name="m")
 
     # Assert
     ws = openpyxl.load_workbook(out)["m"]
@@ -97,7 +97,7 @@ def test_ghi_dat_ten_sheet_theo_chuc_nang(tmp_path):
     out = tmp_path / "o.xlsx"
 
     # Act
-    _, _, ten = ghi(src, out, TEMPLATE, sheet_name="event_edit_schedule")
+    _, _, ten, _ = ghi(src, out, TEMPLATE, sheet_name="event_edit_schedule")
 
     # Assert
     assert ten == "event_edit_schedule"
@@ -110,7 +110,7 @@ def test_ghi_cat_ten_sheet_qua_31_ky_tu(tmp_path):
     out = tmp_path / "o.xlsx"
 
     # Act
-    _, _, ten = ghi(src, out, TEMPLATE, sheet_name="x" * 40)
+    _, _, ten, _ = ghi(src, out, TEMPLATE, sheet_name="x" * 40)
 
     # Assert — Excel gioi han 31 ky tu
     assert len(ten) == 31
@@ -243,3 +243,156 @@ def test_verify_pass_khi_khong_co_token_nao(tmp_path):
     # Assert
     assert V.check_expected_khong_chua_chot(ws, 2, None)[0] is True
     assert V.check_chua_chot_da_to_do(ws, 2, None)[0] is True
+
+
+# --- Cover + ToC + header sheet test case (write_meta_cells.py) ---
+
+META_DU = {"project_name": "Gettii Lite (GTL)", "creator": "HuongDT",
+           "user_story": "GTL-1234", "purpose": "This document is used to verify the menu",
+           "test_environment": "macOS 14, Chrome 127", "reviewer": "QuyenNT",
+           "review_date": "2026-09-04", "reference": "外部設計書 v1.5",
+           "module_description": "Buyer navigator menu of the lottery flow",
+           "screen_name": "マイチケット"}
+
+
+def test_ghi_cover_voi_meta_du_thi_khong_con_placeholder_template(tmp_path):
+    """14 o Cover cua template deu la placeholder `<...>` — phai bi ghi de hoan toan."""
+    # Arrange
+    src = _csv(tmp_path, [_tc(1)])
+    out = tmp_path / "o.xlsx"
+
+    # Act
+    ghi(src, out, TEMPLATE, sheet_name="buyer_navigator_menu", meta=META_DU)
+
+    # Assert
+    cv = openpyxl.load_workbook(out)["Cover"]
+    sot = [c.coordinate for r in cv.iter_rows() for c in r
+           if isinstance(c.value, str) and V.PLACEHOLDER.search(c.value)]
+    assert sot == []
+    assert cv["C3"].value == "Gettii Lite (GTL)"
+    assert cv["C4"].value == "buyer_navigator_menu"      # module_name suy tu ten sheet
+    assert cv["C11"].value == "1.0"                      # version mac dinh
+
+
+def test_ghi_cover_thieu_meta_thi_ghi_chua_chot_va_to_chu_do(tmp_path):
+    """De trong thi review khong phan biet duoc 'chua co tin' voi 'khong can dien'."""
+    # Arrange
+    from xlsx_row_ops import DO, TOKEN_CHUA_CHOT
+    src = _csv(tmp_path, [_tc(1)])
+    out = tmp_path / "o.xlsx"
+
+    # Act
+    _, _, _, chua_chot = ghi(src, out, TEMPLATE, sheet_name="m", meta=None)
+
+    # Assert
+    cv = openpyxl.load_workbook(out)["Cover"]
+    assert cv["C3"].value == TOKEN_CHUA_CHOT             # project_name khong suy ra duoc
+    assert cv["C3"].font.color.rgb == DO
+    assert chua_chot > 0
+
+
+def test_ghi_toc_dong_7_tro_dung_ten_sheet_test_case(tmp_path):
+    """ToC B7 cua template la 'Function {Name}' — phai doi theo ten sheet that."""
+    # Arrange
+    src = _csv(tmp_path, [_tc(1)])
+    out = tmp_path / "o.xlsx"
+
+    # Act
+    ghi(src, out, TEMPLATE, sheet_name="event_edit_schedule", meta=META_DU)
+
+    # Assert
+    toc = openpyxl.load_workbook(out)["Table of content"]
+    assert toc["B7"].value == "event_edit_schedule"
+    assert "event_edit_schedule" in toc["C7"].value
+    assert META_DU["module_description"] in toc["C7"].value
+
+
+def test_verify_fail_khi_cover_con_placeholder_cua_template(tmp_path):
+    """Regression: truoc day verify chi soi sheet test case nen Cover trang van pass."""
+    # Arrange
+    src = _csv(tmp_path, [_tc(1)])
+    out = tmp_path / "o.xlsx"
+    ghi(src, out, TEMPLATE, sheet_name="m", meta=META_DU)
+    wb = openpyxl.load_workbook(out)
+    wb["Cover"]["C3"] = "<Project Name>"                 # tai hien dung loi goc
+    wb.save(out)
+
+    # Act
+    wb2 = openpyxl.load_workbook(out)
+    dat, ct = V.check_cover_toc_da_dien(V._sheet_tc(wb2), 1, None)
+
+    # Assert
+    assert not dat
+    assert "Cover!C3" in ct
+
+
+def test_verify_khong_soi_3_sheet_danh_cho_tester_dien(tmp_path):
+    """Test report / Test data / Evidences giu placeholder la CO CHU DINH, cam fail."""
+    # Arrange
+    src = _csv(tmp_path, [_tc(1)])
+    out = tmp_path / "o.xlsx"
+    ghi(src, out, TEMPLATE, sheet_name="m", meta=META_DU)
+
+    # Act
+    wb = openpyxl.load_workbook(out)
+    dat, ct = V.check_cover_toc_da_dien(V._sheet_tc(wb), 1, None)
+
+    # Assert — 3 sheet do van con `<TC_001>`, `<Column 1>`... nhung phai PASS
+    assert [wb["Test data"]["A3"].value, wb["Evidences"]["B3"].value] != [None, None]
+    assert dat, ct
+
+
+def test_ghi_header_sheet_test_case_dien_du_b2_b6(tmp_path):
+    """B2..B6 template la `<Function Name>`..`<Link ticket>` — phai bi ghi de."""
+    # Arrange
+    src = _csv(tmp_path, [_tc(1)])
+    out = tmp_path / "o.xlsx"
+
+    # Act
+    ghi(src, out, TEMPLATE, sheet_name="buyer_navigator_menu", meta=META_DU)
+
+    # Assert
+    ws = openpyxl.load_workbook(out)["buyer_navigator_menu"]
+    assert ws["B2"].value == "buyer_navigator_menu"      # Function Name
+    assert ws["B3"].value == "マイチケット"                 # Screen Name giu nguyen van
+    assert ws["B4"].value == "HuongDT"
+    assert ws["B6"].value == META_DU["reference"]
+    sot = [o for o in ("B2", "B3", "B4", "B5", "B6")
+           if V.PLACEHOLDER.search(str(ws[o].value))]
+    assert sot == []
+
+
+def test_ghi_header_thieu_screen_name_thi_to_do_cung_luot_voi_test_case(tmp_path):
+    """Header duoc ghi TRUOC to_do_red(ws) cua writer — sai thu tu thi khong to duoc."""
+    # Arrange
+    from xlsx_row_ops import DO, TOKEN_CHUA_CHOT
+    meta = {k: v for k, v in META_DU.items() if k != "screen_name"}
+    src = _csv(tmp_path, [_tc(1)])
+    out = tmp_path / "o.xlsx"
+
+    # Act
+    ghi(src, out, TEMPLATE, sheet_name="m", meta=meta)
+
+    # Assert
+    ws = openpyxl.load_workbook(out)["m"]
+    assert ws["B3"].value == TOKEN_CHUA_CHOT
+    assert ws["B3"].font.color.rgb == DO
+
+
+def test_verify_fail_khi_header_sheet_test_case_con_placeholder(tmp_path):
+    """Regression: check 12 truoc day chi soi Cover/ToC, bo lot B2..B6."""
+    # Arrange
+    src = _csv(tmp_path, [_tc(1)])
+    out = tmp_path / "o.xlsx"
+    ghi(src, out, TEMPLATE, sheet_name="m", meta=META_DU)
+    wb = openpyxl.load_workbook(out)
+    wb["m"]["B2"] = "<Function Name>"                    # tai hien dung loi goc
+    wb.save(out)
+
+    # Act
+    wb2 = openpyxl.load_workbook(out)
+    dat, ct = V.check_cover_toc_da_dien(V._sheet_tc(wb2), 1, None)
+
+    # Assert
+    assert not dat
+    assert "m!B2" in ct

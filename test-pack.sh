@@ -18,7 +18,7 @@ ok()   { printf "  PASS  %s\n" "$*"; PASS=$((PASS+1)); }
 bad()  { printf "  FAIL  %s\n" "$*"; FAIL=$((FAIL+1)); }
 head_() { printf "\n== %s ==\n" "$*"; }
 
-SKILLS="create-test-schedule estimate-test execute-testcase gen-requirement gen-testcase gen-test-plan log-bug"
+SKILLS="bug-analyst create-test-schedule estimate-test execute-testcase gen-requirement gen-testcase gen-test-plan log-bug"
 
 # Cai gi LA noi dung phat di -> phai duoc quet du lieu khach hang.
 SCAN_TARGETS="skills configs inputs templates README.md requirements.txt install.sh"
