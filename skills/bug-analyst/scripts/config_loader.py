@@ -78,6 +78,13 @@ def load_config(profile_path=None, manifest_path=None, cli_overrides=None):
     return resolve_credentials(merged)
 
 
+def _join(value):
+    """List label -> chuoi de in ra report. GitLab nhan nhieu label (OR)."""
+    if isinstance(value, (list, tuple)):
+        return ", ".join(str(v).strip() for v in value if str(v).strip())
+    return value
+
+
 def _mask(value):
     return "***da-resolve-tu-env***" if value else "(chua set)"
 
@@ -92,8 +99,8 @@ def effective_config(merged):
         ("tracker.base_url", tracker.get("base_url")),
         ("tracker.project", tracker.get("project_path") or tracker.get("project_key")
          or tracker.get("project_id")),
-        ("tracker.bug_filter", tracker.get("bug_label") or tracker.get("bug_issue_type")
-         or tracker.get("bug_tracker_name")),
+        ("tracker.bug_filter", _join(tracker.get("bug_labels")) or tracker.get("bug_label")
+         or tracker.get("bug_issue_type") or tracker.get("bug_tracker_name")),
         ("tracker.credential", _mask(tracker.get("token") or tracker.get("api_key")
                                      or tracker.get("api_token"))),
         ("run.phase", run.get("phase")),

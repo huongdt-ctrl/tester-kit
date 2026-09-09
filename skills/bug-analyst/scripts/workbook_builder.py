@@ -83,10 +83,10 @@ def build(template_path, out_path, rows, phase=None, date_from=None,
 
     validated = sheet_ops.remap_validations(ws, layout)
     chart_fixes = sheet_ops.remap_charts(ws, layout, SHEET_NAME)
-    fw.write_issue_actions(ws, layout, issues)
+    issue_report = fw.write_issue_actions(ws, layout, issues)
 
     wb.save(out_path)
-    return {
+    report = {
         "output": out_path,
         "bug_count": len(rows),
         "rows_inserted": dict(layout.extra),
@@ -98,6 +98,8 @@ def build(template_path, out_path, rows, phase=None, date_from=None,
         "catalogue_rows_added": added,
         "uncounted": reconcile(rows, labels),
     }
+    report.update(issue_report)
+    return report
 
 
 def _plan_labels(wb, ws, rows):

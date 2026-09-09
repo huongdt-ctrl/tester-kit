@@ -16,7 +16,11 @@ tracker:
   base_url: "https://gitlab.example.com"
   project_path: "group/subgroup/project"
   token: "env:GITLAB_TOKEN"
-  bug_label: "bug"              # bug = issue co label nay
+  # Bug = issue mang MOT TRONG cac label duoi day (OR). GitLab khong co cu phap
+  # OR nen skill goi rieng tung label roi gop -- them label = them mot vong
+  # phan trang, chay lau hon. "Egg" la nhan bug theo quy uoc cua team NAL.
+  bug_labels: ["bug", "Egg"]
+  # bug_label: "bug"            # key cu, chi 1 label -- van doc duoc neu co
 
   # --- Jira (bo comment khi doi sang jira) ---
   # base_url: "https://your-domain.atlassian.net"

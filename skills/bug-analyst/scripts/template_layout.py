@@ -51,6 +51,7 @@ BLOCK_BY_KEY = {b.key: b for b in BLOCKS}
 BLOCK_KEYS = tuple(b.key for b in BLOCKS)
 
 ISSUE_TABLE_HEADER = 154        # bang No./Issue/Action/Status/PIC (toa do GOC)
+ISSUE_TABLE_SLOTS = 12          # row 155..166 -- duoi 166 KHONG con border/merge/wrap
 
 
 class Layout:

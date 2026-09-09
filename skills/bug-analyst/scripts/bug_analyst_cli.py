@@ -26,7 +26,7 @@ DEFAULT_TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "templates", "template_bug_analysis.xlsx")
 
 
-def _load(args):
+def _load(args, need_credentials=True):
     overrides = {"run": {}, "tracker": {}}
     for key in ("phase", "date_from", "date_to"):
         if getattr(args, key, None):
@@ -38,7 +38,11 @@ def _load(args):
         raise ValueError(
             "Credential ghi plaintext trong config: %s. Chi duoc ghi dang "
             "'env:TEN_BIEN'." % ", ".join(plaintext))
-    if missing:
+    # Plaintext credential la loi bao mat cua config -> chan MOI lenh, ke ca lenh
+    # khong goi mang. Con thieu bien env thi chi chan lenh THAT SU goi tracker:
+    # `build` doc file JSON + template tren dia, doi token la chan oan nguoi gen
+    # lai bao cao offline.
+    if missing and need_credentials:
         raise ValueError("Chua set bien moi truong: %s" % ", ".join(missing))
     return merged
 
@@ -91,7 +95,7 @@ def cmd_collect(args):
 
 
 def cmd_build(args):
-    merged = _load(args) if (args.profile or args.manifest) else {}
+    merged = _load(args, need_credentials=False) if (args.profile or args.manifest) else {}
     data = cli_io.read_json(args.bugs_file)
     rows = data.get("rows") if isinstance(data, dict) else data
     if not isinstance(rows, list):

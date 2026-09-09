@@ -1,6 +1,6 @@
 ---
 name: bug-analyst
-description: "Thu thap bug cua mot giai doan tu tracker (GitLab label=bug / Jira issuetype=Bug / Redmine tracker=Bug) theo khoang ngay, clone template QA TEM-ST03_02 (di kem skill: templates/template_bug_analysis.xlsx) roi do du lieu va phan tich vao dung cot, xuat ra file .xlsx dat ten theo giai doan. Tu gian dong khi vuot 37 bug va va lai cong thuc + 5 chart. Triggers (VI): 'phan tich bug', 'bug analysis', 'thong ke bug theo sprint', 'bao cao bug giai doan', 'gen file phan tich bug'."
+description: "Thu thap bug cua mot giai doan tu tracker (GitLab: mot trong cac label o bug_labels, mac dinh bug + Egg / Jira issuetype=Bug / Redmine tracker=Bug) theo khoang ngay, clone template QA TEM-ST03_02 (di kem skill: templates/template_bug_analysis.xlsx) roi do du lieu va phan tich vao dung cot, xuat ra file .xlsx dat ten theo giai doan. Tu gian dong khi vuot 37 bug va va lai cong thuc + 5 chart. Triggers (VI): 'phan tich bug', 'bug analysis', 'thong ke bug theo sprint', 'bao cao bug giai doan', 'gen file phan tich bug'."
 ---
 
 # Skill: bug-analyst
@@ -36,7 +36,7 @@ Ca ba deu goi API that, chi doc, khong ghi gi len tracker:
 
 | System | API | Bug la gi | Loc ngay theo |
 |---|---|---|---|
-| `gitlab` | `GET /api/v4/projects/:id/issues`, header `PRIVATE-TOKEN` | issue co **label** `bug` (`tracker.bug_label`) | `created_after` / `created_before` |
+| `gitlab` | `GET /api/v4/projects/:id/issues`, header `PRIVATE-TOKEN` | issue co **mot trong** cac label o `tracker.bug_labels` (mac dinh `bug`; project NAL thuong dung `["bug", "Egg"]`) | `created_after` / `created_before` |
 | `jira` | `GET /rest/api/2/search` (JQL), Basic auth | issue co **issuetype** `Bug` (`tracker.bug_issue_type`) | `created >=` / `created <=` |
 | `redmine` | `GET /issues.json`, header `X-Redmine-API-Key` | issue co **tracker** `Bug` (`tracker.bug_tracker_name`) | `created_on=><from|to` |
 
@@ -49,6 +49,51 @@ Ghi chu ky thuat da chot:
 - **Redmine loc theo `tracker_id` dang so**, khong loc theo ten -> skill tu tra
   id tu `/trackers.json` neu config chi khai ten.
 - `system` mac dinh trong profile la **GitLab**; doi mot dong la sang jira/redmine.
+- **Nhieu label bug tren GitLab = nhieu request.** GitLab loc `labels=bug,Egg` theo
+  **AND** (issue phai co ca hai), khong co cu phap OR. Skill goi rieng tung label
+  roi gop lai va khu trung theo `iid` -- issue dinh ca hai label chi dem **mot**
+  lan. Doi lai: n label = n vong phan trang, chay lau gap n.
+- `bug_labels` chi co o GitLab. Jira loc theo `bug_issue_type`, Redmine theo
+  `bug_tracker_name`/`bug_tracker_id` -- moi ben mot gia tri, chua ho tro nhieu.
+
+## 3b. Egg va bug la HAI LOAI KHAC NHAU -- khong duoc gop
+
+Quy uoc cua team NAL:
+
+| Nhan | Ai tim ra | Khi nao | Doc ra dieu gi |
+|---|---|---|---|
+| `Egg` | **Tester noi bo** | **Truoc** ban giao | Luoi test bat duoc bao nhieu, bat dung cho nguy hiem khong |
+| `bug` | **Khach hang** | **Sau** ban giao | Bao nhieu loi LOT qua luoi test |
+
+Hai con so nay tra loi hai cau hoi khac nhau, **gop vao mot file la mat ca hai**:
+ty le lot loi (escape rate) = so bug / (so Egg + so bug). Gop lai thi mau so va tu
+so nhap lam mot, khong con gi de do.
+
+**Cach chay dung: hai lan, hai file.**
+
+```bash
+# Loi noi bo cua giai doan
+python3 $S/bug_analyst_cli.py --profile $P --phase "Sprint 3 (Egg)" ... collect --out bug_analysis/egg.json
+
+# Loi khach hang bao trong cung giai doan -- doi bug_labels trong profile thanh ["bug"]
+python3 $S/bug_analyst_cli.py --profile $P --phase "Sprint 3 (bug KH)" ... collect --out bug_analysis/bug.json
+```
+
+Khai `bug_labels: ["bug", "Egg"]` chi dung khi ban that su muon **mot bang tong
+tat ca defect** va da chap nhan mat phep do lot loi.
+
+**Truoc khi ket luan "0 loi khach hang": kiem tra nhan do co TON TAI tren project
+khong.** GitLab tra ve rong ca khi nhan khong ton tai lan khi that su khong co
+issue nao -- hai truong hop khac han nhau ve y nghia:
+
+```bash
+curl -s -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://<host>/api/v4/projects/<path-url-encoded>/labels?per_page=100" \
+  | python3 -c "import json,sys; print(sorted(l['name'] for l in json.load(sys.stdin)))"
+```
+
+Khong thay nhan trong danh sach => project chua ghi loai defect do o day, con so 0
+la "khong co cho ghi", khong phai "khong co loi".
 
 ## 4. Cach goi
 
@@ -193,6 +238,9 @@ Script chi dien nhung o **suy ra duoc** tu tracker:
 Ba o **de TRONG cho agent phan tich** -- `Severity`, `Cause catelogies`,
 `Root cause`. Doan bua vao day thi bang V/VI/VII dep nhung sai.
 
+Ca **bang Issue / Action** o duoi cung cung do agent viet 100% -- co luat rieng
+o muc **7b**, doc truoc khi viet.
+
 `build` **tu chan** khi ba o do con trong; muon xuat ban thieu phai noi ro
 `--allow-incomplete`.
 
@@ -210,6 +258,134 @@ Khi phan tich, giu dung ranh gioi khai niem:
 - **Cause catelogies** = sai o **KHAU** nao (requirement / design / code / test / deploy).
 - **Root cause** = **TAI SAO** khau do sai (process / skill / discipline).
 
+## 7b. Bang Issue / Action -- bon luat
+
+Bang duoi cung (`No. | Issue | Action | Status | PIC`, 12 dong) do **agent viet
+tay**, script chi do vao o. Day la phan bi doc nhieu nhat trong ca file va cung
+bi viet do nhat: liet ke cam nhan roi ghi "Dev A, B, C fix" thi bang nay khong
+theo doi duoc gi.
+
+### Luat 1 -- Issue phai la VAN DE, khong phai khoang trong du lieu
+
+Ba cau hoi gac cong. Truot **mot** cau la **bo dong do**, khong co ngoai le:
+
+1. **Co so neo tu chinh du lieu bug vua thu khong?** Issue phai chi ra duoc
+   cot / con so dua ra nhan dinh (vd `12/45 bug o Cause = COD1.1`,
+   `8 bug o man Đăng nhập`). Khong neo duoc vao so nao -> cam nhan, khong phai issue.
+2. **Co phai chi la "khong co du lieu" khong?** `0 bug nhan bug` khi **khach hang
+   chua test** la **trang thai tien do**, KHONG phai issue -- cho ghi la muc 3b
+   (kiem tra nhan co ton tai) hoac cot Note, KHONG phai bang nay. Tuong tu:
+   "chua co milestone", "chua co Severity" khi giai doan chua chay xong.
+3. **Giai doan sau lam khac di duoc khong?** Khong dan tới viec lam khac di
+   duoc -> bo.
+
+**12 dong la du cho 3-6 issue that.** Dien cho het 12 dong bang issue mo la lam
+loang bang: nguoi doc khong biet cai nao dang thuc su phai xu ly.
+
+### Luat 2 -- Action phai KIEM CHUNG duoc
+
+Moi action bat buoc du **bon phan**. Thieu mot phan la action chua viet xong:
+
+| Phan | Sai | Dung |
+|---|---|---|
+| **Ai** | "Dev A, B, C", "team dev", "QA" | ten that + role: `Nam (BE)`, `Linh (QA)` |
+| **Lam gi** | "fix cho ky", "chu y hon", "review lai" | dong tu + doi tuong DO DUOC: `thêm 6 test case biên cho màn Thanh toán` |
+| **Khi nao** | (bo trong) | moc cu the: `trước 2026-09-20` hoac `trước khi mở Sprint 4` |
+| **Bang chung** | (bo trong) | artifact mo ra kiem duoc: `link MR`, `checklist review có người thứ hai ký`, `số bug Cause=COD1.1 sprint sau ≤ 4` |
+
+**Phep thu truoc khi ghi:** doc action roi tu hoi *"ba tuan nua toi mo cai gi ra
+de biet viec nay da lam?"*. Khong tra loi duoc -> viet lai. "Da nhac team",
+"da luu y" KHONG phai bang chung; commit / MR / file test case / con so do lai
+sprint sau thi la.
+
+### Luat 3 -- Action phai treo khoi case, dung o goc DU AN
+
+Bug trong file nay chi la **nhung cho DA BI SOI**. Sua dung 5 ticket da log thi
+5 cho do thanh 5 cho sach nhat du an, con cho cung kieu chua ai test van y nguyen
+-- ky sau lai log lai dung loai loi do. Vi the moi action di **ba tang, moi tang
+mot dong**:
+
+| Tang | Cau hoi phai tra loi | Vi du |
+|---|---|---|
+| **1. Chan ngay** | cai da bat duoc, sua o dau | `FE bo hardcode màu/font-size ở 4 màn #61 #64 #67 #95 — bằng chứng: link MR, trước 15/09` |
+| **2. Quet tuong tu** | **con cho nao CUNG KIEU ma chua ai test?** Phai neu **mau so TOAN DU AN**, khong phai mau so trong lo bug | `grep hardcode hex/px trên cả 30 module trong scope, không chỉ 4 màn đã có Egg — bằng chứng: danh sách file còn hardcode, trước 17/09` |
+| **3. Chan tai phat** | **lan sau con sinh ra duoc nua khong?** Sua vao quy trinh / cong cu / DoD, kem so do | `thêm lint rule chặn hex trong style mới — bằng chứng: CI fail khi commit hardcode; đo cuối Sprint 7: Egg IMP3 ≤ 2 (kỳ này 6)` |
+
+**Phep thu:** bit het so ticket trong action ma action **van con nghia** -> da treo
+khoi case. Con doc ra "sua #61, #64" la van case by case.
+
+**Mau so phai la mau so du an.** Issue neu so trong lo bug (`6/15 Egg`); action
+neu **pham vi quet toan du an** (`30 module trong scope`, `moi màn có input ngày`,
+`moi quan hệ xoá cha-con`). Thieu ve nay thi action chi va dung phan da lo ra.
+
+**Nhung KHONG suy rong bua.** Quet theo **cung CO CHE sinh loi**, khong phai cung
+chu de: #99/#116 la co che "xoa cha nhung con con tham chieu" -> quet moi cap
+cha-con co chuc nang xoa; KHONG phai "review lai toan bo màn seat". Action rong
+den muc khong ai biet bat dau tu dau thi cung vo dung nhu action chi va 1 ticket.
+
+### Luat 4 -- Moi y mot dong, co danh so
+
+KHONG viet van lien mach trong o:
+
+- **Issue**: 1-2 dong. Dong dau neu van de + so neo. Khong ke lai qua trinh.
+- **Action**: danh so `1.` `2.` `3.` -- **dung ba tang cua Luat 3**, moi tang mot
+  so. Qua 4 so -> tach thanh 2 issue rieng (dung nhoi tang 2 va 3 vao cung mot so).
+- **Trong moi so, moi Y lai mot dong rieng.** Dong chinh = VIEC. Bang chung,
+  han, so do -> **y con**, moi cai mot dong, CLI tu thut vao `\u2022`. Nhoi
+  "viec + bang chung + han" vao cung mot dong thi doc phai do mat tim dau la
+  vat, va dong do dai gap 2-3 lan be rong cot nen Excel wrap tuy y giua cau.
+- **Tieu chi la MOT DONG MOT Y, khong phai dem ky tu.** Do that: o `Issue`
+  (merge B:D) chua ~36 ky tu mot dong hien thi, o `Action` (merge E:I) ~82 --
+  moi cau du nghia deu dai hon the, va wrap la binh thuong vi skill da tinh
+  height theo so dong sau wrap. **Dau hieu phai tach**: mot dong ngon tu 3 dong
+  hien thi tro len -> gan nhu chac chan dong do dang gom nhieu y, day bot xuong
+  y con (`Cặp cần rà: ...`, `4 nhóm: ...`) chu dung de nguyen mot cau dai.
+- Truyen vao JSON: `issue` / `action` nhan **list**; phan tu la **string** (mot
+  dong) hoac **list cua string** (`[dong chinh, y con, y con...]`). CLI tu danh
+  so + thut y con. String co `\n` san cung duoc; da tu danh so hoac gach dau
+  dong thi CLI giu nguyen, khong danh so lan hai.
+
+```json
+{"issues": [
+  {"issue": "12/45 bug có Cause = COD1.1 (code sai logic), tập trung ở màn Thanh toán",
+   "action": [["Chặn ngay: Nam (BE) bổ sung unit test cho 3 hàm tính phí màn Thanh toán",
+               "Bằng chứng: link MR",
+               "Hạn: 2026-09-20"],
+              ["Quét tương tự: rà mọi màn có tính toán tiền trong 30 module scope",
+               "Bằng chứng: danh sách hàm chưa có UT",
+               "Hạn: 2026-09-24"],
+              ["Chặn tái phát: DoD task BE thêm điều kiện “hàm tính tiền phải có UT”",
+               "Bằng chứng: CI báo coverage",
+               "Đo cuối Sprint 4: tỉ lệ bug COD1.1 ≤ 15% (kỳ này 27%)"]],
+   "status": "Open", "pic": "Nam"}
+]}
+```
+
+Ba dong tren doc theo dung thu tu **tang 1 / tang 2 / tang 3** cua Luat 3. Khong
+bat buoc ghi chu tien to "Chan ngay:" / "Quet tuong tu:" -- nhung ghi vao thi
+nguoi doc biet ngay action da du ba tang hay con thieu.
+
+**Do that, khong phai phong doan:** o `B`/`E` cua bang nay la **merged cell +
+wrap_text**, va Excel **KHONG tu gian chieu cao dong da merge** -> text nhieu
+dong bi che mat neu khong set height. Skill tu set `row_dimensions[row].height`;
+**dung** go tay newline vao file da xuat roi mong Excel tu gian.
+
+Chieu cao tinh theo **so dong SAU KHI WRAP**, khong phai so dong logic: be rong
+o lay bang **tong ca vung merge** (B:D ~37 ky tu, E:I ~82), roi moi dong logic
+dem `ceil(do_dai / be_rong)` dong hien thi. Do that: dong action 150-200 ky tu
+an 2-3 dong -> tinh theo dong logic la dat height thieu mot nua, text bi che
+im lang.
+
+Template can GIUA o `Issue` (`horizontal=center`) -- hop voi nhan ngan nhung doan
+van dai thi lech mep hai ben. Skill doi rieng field `horizontal` sang `left`,
+**giu nguyen** `vertical=center` + `wrap_text`: gan `Alignment` moi tay la mat
+wrap_text, mat wrap_text la text tran ngang qua o ben canh.
+
+**Tran 12 dong la cung** (row 155..166 theo toa do goc): duoi 166 khong con o nao
+co border / merge / wrap. Truyen hon 12 issue thi CLI ghi 12 dong dau va bao phan
+bo o `issues_dropped`, khong tran im lang xuong vung trang. Output JSON cua
+`build` co `issues_written` / `issues_dropped` / `issue_slots` de doi chieu.
+
 ## 8. Bao mat credential
 
 Giong `log-bug` va `execute-testcase`: `token` / `api_key` / `api_token`
@@ -225,10 +401,11 @@ Giong `log-bug` va `execute-testcase`: `token` / `api_key` / `api_token`
 cd ~/.claude/skills/bug-analyst && python3 -m unittest discover -s tests
 ```
 
-50 test, khong cham mang (HTTP duoc mock). Phu: quy mo that 200 bug, phep dich
+66 test, khong cham mang (HTTP duoc mock). Phu: quy mo that 200 bug, phep dich
 dong khi vuot suc chua,
 va lai chart/dropdown/merge, nam loi cua template, bu danh muc bang VI va dem
 duoc bug xep vao muc vua bu, mo phong lai COUNTIF de bat cong thuc tro nham cot,
 filter cua ca 3 tracker, phan trang, hop dong "luon tra JSON" cua CLI, vi tri bang
-Issue/Action sau khi dich dong, va hai regression ve chuan hoa gia tri (lech
-hoa/thuong, lech dau cach) -- mo phong dung luat COUNTIF de bat lai duoc bug goc.
+Issue/Action sau khi dich dong, dinh dang o Issue/Action (danh so, y con
+xuong dong, chieu cao dong merged tinh sau wrap, can le trai, tran 12 dong), va hai regression ve chuan hoa gia tri (lech hoa/thuong,
+lech dau cach) -- mo phong dung luat COUNTIF de bat lai duoc bug goc.

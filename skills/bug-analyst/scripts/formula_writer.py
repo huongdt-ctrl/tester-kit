@@ -11,7 +11,12 @@ Hai loi cua template duoc sua o day:
   - Section VII (Root cause) viet COUNTIF($K$3:$K$39, $A$126:$A$151) -- tham so
     thu hai la ca dai o, khien moi dong tra ve cung mot so.
 """
-from template_layout import DATA_START
+import re
+from copy import copy
+
+from openpyxl.utils import get_column_letter
+
+from template_layout import DATA_START, ISSUE_TABLE_SLOTS
 
 PERCENT_FORMAT = "0.0%"
 
@@ -106,16 +111,140 @@ def read_fixed_labels(ws, block):
     return out
 
 
+ALREADY_NUMBERED = re.compile(r"^(\d+[.)]|[-*\u2022])\s")
+LINE_HEIGHT = 15.0
+SUB_PREFIX = "   \u2022 "          # thut vao qua "1. " roi moi den y con
+DEFAULT_COL_WIDTH = 8.43           # width Excel mac dinh khi column_dimensions trong
+
+
+def _as_blocks(value):
+    """Gia tri o -> danh sach BLOCK; moi block = [dong chinh, y con, y con...].
+
+    Nhan:
+      - string            -> tach theo newline, moi dong mot block 1 dong
+      - list[str]         -> moi phan tu mot block 1 dong
+      - list[list[str]]   -> phan tu dau la dong chinh, con lai la y con
+
+    Cat dau cach va bo dong rong: dong rong lot vao giua lam Excel gian chieu
+    cao vo ich.
+    """
+    if value is None:
+        return []
+    items = value if isinstance(value, (list, tuple)) else str(value).splitlines()
+    blocks = []
+    for item in items:
+        if isinstance(item, (list, tuple)):
+            lines = [str(x).strip() for x in item if str(x).strip()]
+        else:
+            lines = [str(item).strip()] if str(item).strip() else []
+        if lines:
+            blocks.append(lines)
+    return blocks
+
+
+def _render_cell(blocks):
+    """Block -> text cua o: dong chinh danh so, y con thut vao mot gach dau dong.
+
+    Ly do tach y con ra dong rieng: nhoi "viec + bang chung + han" vao cung mot
+    dong thi doc phai do mat tim dau la vat, va dong do dai gap 2-3 lan be rong
+    cot nen Excel wrap tuy y giua cau.
+    """
+    if not blocks:
+        return None
+    if len(blocks) == 1 and len(blocks[0]) == 1:
+        return blocks[0][0]
+    # Chi danh so khi co TU HAI block: o Issue la mot phat bieu (van de + co che),
+    # danh so "1./2." vao mot phat bieu doc ra nhu danh sach viec phai lam.
+    numbered = (len(blocks) > 1
+                and not all(ALREADY_NUMBERED.match(b[0]) for b in blocks))
+    out = []
+    for idx, block in enumerate(blocks, 1):
+        out.append("%d. %s" % (idx, block[0]) if numbered else block[0])
+        out.extend(SUB_PREFIX + line for line in block[1:])
+    return "\n".join(out)
+
+
+def _cell_capacity(ws, coord):
+    """So ky tu mot dong hien thi duoc trong o -- CONG be rong ca vung merge.
+
+    O `Issue` la merge B:D, `Action` la merge E:I: tinh theo mot cot thi hut
+    khoang 2-5 lan, chieu cao dong ra thieu va text bi che.
+    """
+    cell = ws[coord]
+    cols = [cell.column_letter]
+    for rng in ws.merged_cells.ranges:
+        if (rng.min_row <= cell.row <= rng.max_row
+                and rng.min_col <= cell.column <= rng.max_col):
+            # get_column_letter, KHONG dung cell.column_letter: o trong vung
+            # merge la MergedCell va MergedCell khong co attribute do.
+            cols = [get_column_letter(c)
+                    for c in range(rng.min_col, rng.max_col + 1)]
+            break
+    total = sum(ws.column_dimensions[c].width or DEFAULT_COL_WIDTH for c in cols)
+    return max(10, int(total))
+
+
+def _visual_lines(text, capacity):
+    """So dong Excel THAT SU ve ra sau khi wrap, khong phai so dong logic.
+
+    Do that: cot Action rong ~82 ky tu nhung dong action dai 150-200 ky tu ->
+    moi dong logic an 2-3 dong hien thi. Tinh height theo so dong logic la dat
+    chieu cao thieu mot nua va text bi che im lang.
+    """
+    if not text:
+        return 0
+    return sum(max(1, -(-len(line) // capacity)) for line in str(text).split("\n"))
+
+
+def _align_left(cell):
+    """Doi rieng horizontal -> left, giu nguyen vertical / wrap cua template.
+
+    Template can GIUA (`horizontal=center`) ca o Issue, hop voi nhan ngan nhung
+    doan van dai thi lech mep hai ben, doc rat met. Phai copy Alignment cu roi
+    doi mot field: gan Alignment moi tay se mat `vertical=center` + `wrap_text`,
+    ma mat wrap_text la text nhieu dong tran ngang qua o ben canh.
+    """
+    alignment = copy(cell.alignment)
+    alignment.horizontal = "left"
+    cell.alignment = alignment
+
+
 def write_issue_actions(ws, layout, issues):
-    """Bang VII - Issue / Action / Status / PIC (cot A,B,E,J,K theo template)."""
+    """Bang VIII - Issue / Action / Status / PIC (cot A,B,E,J,K theo template).
+
+    Noi dung do agent viet (xem SKILL.md muc 7b). Ham nay lo hai thu ma viec ghi
+    tay hay quen:
+
+    - **Chieu cao dong**: o B/E la merged cell + wrap_text, va Excel KHONG tu
+      gian chieu cao dong da merge -> text nhieu dong bi che mat neu khong set
+      height. Tinh theo so dong SAU KHI WRAP, khong phai so dong logic.
+    - **Tran 12 dong** (row 155..166): duoi 166 khong con o nao co border/merge/
+      wrap, ghi tran xuong do la du lieu nam tren vung trang ma khong ai thay.
+      Vuot tran thi bao ra `issues_dropped`, khong cat im lang.
+    """
     header = layout.issue_table_header
+    written, dropped = 0, []
     for idx, item in enumerate(issues or []):
+        issue_text = _render_cell(_as_blocks(item.get("issue")))
+        action_text = _render_cell(_as_blocks(item.get("action")))
+        if idx >= ISSUE_TABLE_SLOTS:
+            dropped.append((issue_text or "(issue rong)").split("\n")[0])
+            continue
         row = header + 1 + idx
         ws["A%d" % row] = idx + 1
-        ws["B%d" % row] = item.get("issue")
-        ws["E%d" % row] = item.get("action")
+        ws["B%d" % row] = issue_text
+        ws["E%d" % row] = action_text
+        # O B la merged cell B:D -> style cua o goc quyet dinh ca vung merge.
+        _align_left(ws["B%d" % row])
         ws["J%d" % row] = item.get("status") or "Open"
         ws["K%d" % row] = item.get("pic")
+        n_lines = max(_visual_lines(issue_text, _cell_capacity(ws, "B%d" % row)),
+                      _visual_lines(action_text, _cell_capacity(ws, "E%d" % row)))
+        if n_lines > 1:
+            ws.row_dimensions[row].height = n_lines * LINE_HEIGHT
+        written += 1
+    return {"issues_written": written, "issues_dropped": dropped,
+            "issue_slots": ISSUE_TABLE_SLOTS}
 
 
 def write_phase_header(ws, phase, date_from, date_to):

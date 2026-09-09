@@ -22,10 +22,11 @@ REDMINE_CFG = {"base_url": "https://redmine.test", "api_key": "k",
                "project_id": "prj", "bug_tracker_id": 1, "page_size": 2}
 
 
-def gitlab_issue(iid):
+def gitlab_issue(iid, labels=None):
     return {"iid": iid, "title": "[GET-1][G10] loi %s" % iid,
             "web_url": "https://gl.test/-/issues/%s" % iid,
-            "labels": ["bug", "priority::High"], "milestone": {"title": "Sprint 3"},
+            "labels": labels or ["bug", "priority::High"],
+            "milestone": {"title": "Sprint 3"},
             "state": "opened", "created_at": "2026-08-0%dT10:00:00Z" % (iid % 9 + 1)}
 
 
@@ -88,6 +89,71 @@ class TestGitLabCollect(unittest.TestCase):
             adapter.list_bugs("2026-08-01", "2026-08-31")
         self.assertIn("token", str(ctx.exception))
 
+
+
+
+
+class TestGitLabMultiLabel(unittest.TestCase):
+    """GitLab loc `labels=a,b` theo AND -> nhieu label phai goi rieng tung cai."""
+
+    def _adapter(self, **extra):
+        cfg = dict(GITLAB_CFG)
+        cfg.update(extra)
+        return GitLabAdapter(cfg)
+
+    def test_gitlab_hai_label_goi_rieng_tung_label_khong_gop_vao_mot_request(self):
+        # Arrange
+        adapter = self._adapter(bug_labels=["bug", "Egg"])
+        goi = []
+
+        def fake_get(url, headers=None, params=None, timeout=None):
+            goi.append(params["labels"])
+            return FakeResponse([])
+
+        # Act
+        with mock.patch("adapters.gitlab_adapter.requests.get", fake_get):
+            adapter.list_bugs("2026-08-01", "2026-08-31")
+
+        # Assert: 2 request rieng, KHONG phai mot request "bug,Egg" (= AND)
+        self.assertEqual(goi, ["bug", "Egg"])
+
+    def test_gitlab_issue_mang_ca_hai_label_chi_duoc_dem_mot_lan(self):
+        # Arrange: #2 dinh ca 'bug' lan 'Egg' -> ve o ca hai vong
+        theo_label = {
+            "bug": [[gitlab_issue(1), gitlab_issue(2, ["bug", "Egg"])]],
+            "Egg": [[gitlab_issue(2, ["bug", "Egg"]), gitlab_issue(3, ["Egg"])]],
+        }
+        adapter = self._adapter(bug_labels=["bug", "Egg"], page_size=5)
+
+        def fake_get(url, headers=None, params=None, timeout=None):
+            pages = theo_label[params["labels"]]
+            idx = int(params["page"]) - 1
+            return FakeResponse(pages[idx] if idx < len(pages) else [])
+
+        # Act
+        with mock.patch("adapters.gitlab_adapter.requests.get", fake_get):
+            bugs = adapter.list_bugs("2026-08-01", "2026-08-31")
+
+        # Assert: gop du 3 bug, #2 khong bi dem doi, sap xep theo created_at
+        self.assertEqual([b["id"] for b in bugs], ["#1", "#2", "#3"])
+
+    def test_gitlab_bug_labels_dang_chuoi_phan_cach_bang_dau_phay_van_tach_dung(self):
+        # Arrange
+        adapter = self._adapter(bug_labels="bug, Egg ,")
+        # Act + Assert
+        self.assertEqual(adapter.bug_labels(), ["bug", "Egg"])
+
+    def test_gitlab_khong_khai_bug_labels_thi_dung_key_cu_bug_label(self):
+        # Arrange: profile cu chi co bug_label -> khong duoc vo
+        adapter = self._adapter(bug_label="defect")
+        # Act + Assert
+        self.assertEqual(adapter.bug_labels(), ["defect"])
+
+    def test_gitlab_bug_labels_rong_ve_mac_dinh_bug_chu_khong_lay_het_issue(self):
+        # Arrange: list rong -> khong loc gi = keo ve toan bo issue project
+        adapter = self._adapter(bug_labels=[])
+        # Act + Assert
+        self.assertEqual(adapter.bug_labels(), ["bug"])
 
 
 if __name__ == "__main__":

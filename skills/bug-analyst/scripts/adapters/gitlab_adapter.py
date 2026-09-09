@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GitLab: bug = issue co label 'bug'. API v4, auth PRIVATE-TOKEN.
+"""GitLab: bug = issue mang MOT TRONG cac label bug. API v4, auth PRIVATE-TOKEN.
 
 GitLab KHONG co field priority cho issue -> doc tu label dang 'priority::high'.
 Khong co label do thi de trong, KHONG doan Normal (doan thi thong ke sai ma
@@ -25,9 +25,44 @@ class GitLabAdapter(BaseAdapter):
         project = urllib.parse.quote(str(self.cfg.get("project_path") or ""), safe="")
         return "%s/api/v4/projects/%s%s" % (self.base_url, project, suffix)
 
+    def bug_labels(self):
+        """Cac label duoc coi la bug. Nhan list, chuoi 'a, b', hoac key cu
+        `bug_label`. Rong thi ve mac dinh ['bug'] -- khong bao gio tra list rong
+        vi nhu vay se keo ve TOAN BO issue cua project."""
+        raw = self.cfg.get("bug_labels")
+        if raw is None or raw == "":
+            raw = self.cfg.get("bug_label") or "bug"
+        if isinstance(raw, str):
+            raw = raw.split(",")
+        labels, seen = [], set()
+        for item in raw:
+            name = str(item).strip()
+            # Trung ten (ke ca khac hoa thuong) thi goi 2 lan cho cung mot tap
+            # issue -> ton request, khong them bug nao.
+            if name and name.lower() not in seen:
+                seen.add(name.lower())
+                labels.append(name)
+        return labels or ["bug"]
+
     def list_bugs(self, date_from, date_to):
         self._require()
-        label = self.cfg.get("bug_label") or "bug"
+        # GitLab loc `labels=a,b` theo AND (issue phai co CA HAI). Muon OR thi
+        # phai goi rieng tung label roi gop -- khong co cach nao lam 1 request.
+        out, seen = [], set()
+        for label in self.bug_labels():
+            for bug in self._list_by_label(label, date_from, date_to):
+                # Issue mang ca 'bug' lan 'Egg' se ve o ca hai vong -> chi lay
+                # lan dau, khong thi bang thong ke dem doi.
+                if bug["id"] in seen:
+                    continue
+                seen.add(bug["id"])
+                out.append(bug)
+        # Gop nhieu label lam mat thu tu created_at cua tung vong. Sort lai cho
+        # on dinh; sort cua Python la stable nen bug cung gio giu nguyen thu tu.
+        out.sort(key=lambda b: b.get("created_at") or "")
+        return out
+
+    def _list_by_label(self, label, date_from, date_to):
         params = {"labels": label, "state": "all", "per_page": self._page_size(),
                   "order_by": "created_at", "sort": "asc"}
         if date_from:
